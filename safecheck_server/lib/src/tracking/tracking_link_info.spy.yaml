@@ -1,0 +1,7 @@
+### A contact's tracking link as shown to the trip owner, so they can share
+### it themselves.
+class: TrackingLinkInfo
+fields:
+  contactName: String
+  contactPhone: String
+  url: String

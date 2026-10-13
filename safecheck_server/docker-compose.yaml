@@ -1,0 +1,30 @@
+services:
+  # Development services
+  postgres:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "8090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: safecheck
+      POSTGRES_PASSWORD: "${SAFECHECK_POSTGRES_PASSWORD:?Set SAFECHECK_POSTGRES_PASSWORD privately}"
+    volumes:
+      - safecheck_data:/var/lib/postgresql/data
+
+
+  # Test services
+  postgres_test:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "9090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: safecheck_test
+      POSTGRES_PASSWORD: "${SAFECHECK_TEST_POSTGRES_PASSWORD:?Set SAFECHECK_TEST_POSTGRES_PASSWORD privately}"
+    volumes:
+      - safecheck_test_data:/var/lib/postgresql/data
+
+
+volumes:
+  safecheck_data:
+  safecheck_test_data:

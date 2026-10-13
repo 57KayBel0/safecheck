@@ -1,0 +1,17 @@
+### A copy of a trusted contact taken when a trip starts, so later edits to
+### the contact list do not change who a trip's alert is addressed to.
+class: ContactSnapshot
+fields:
+  name: String
+  phoneNumber: String
+  relationship: String?
+
+  ### Whether the contact had accepted their invite when the trip started.
+  ### Null for trips started before invites existed.
+  optedIn: bool?
+
+  ### Whether WhatsApp alerts were enabled when the trip started.
+  notifyByWhatsapp: bool, default=true
+
+  ### Whether SMS fallback alerts were enabled when the trip started.
+  notifyBySms: bool, default=true

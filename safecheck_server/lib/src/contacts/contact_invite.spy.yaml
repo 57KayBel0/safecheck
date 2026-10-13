@@ -1,0 +1,6 @@
+### An invite link for a trusted contact, plus a suggested message the owner
+### can send from their own phone.
+class: ContactInvite
+fields:
+  url: String
+  message: String

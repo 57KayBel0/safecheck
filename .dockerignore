@@ -1,0 +1,11 @@
+# Local credentials and database/private trip data must not enter build layers.
+**/config/passwords.yaml
+**/config/firebase_service_account_key.json
+**/.serverpod/
+**/sp_*.db*
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/.scloud/
+**/.dart_tool/
+**/build/

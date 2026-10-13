@@ -1,0 +1,31 @@
+### A trip with a check-in deadline.
+class: Trip
+table: trip
+fields:
+  ### The auth user identifier (UUID) of the owner.
+  ownerId: String
+  ### Equals [ownerId] while the trip is active and is null afterwards. The
+  ### unique index on this column lets the database guarantee that a user has
+  ### at most one active trip (Postgres allows many NULLs in a unique index).
+  activeOwnerId: String?, scope=serverOnly
+  tripType: TripType
+  description: String
+  durationMinutes: int
+  startedAt: DateTime
+  ### Server-computed time by which the owner must check in.
+  deadline: DateTime
+  status: TripStatus
+  ### When the trip ended (check-in or missed deadline processed).
+  endedAt: DateTime?
+  ### Trusted contacts as they were when the trip started.
+  contacts: List<ContactSnapshot>
+  ### Who may see this trip's location. Chosen when the trip starts.
+  locationSharing: LocationSharing, default=off
+indexes:
+  trip_owner_idx:
+    fields: ownerId
+  trip_active_owner_idx:
+    fields: activeOwnerId
+    unique: true
+  trip_status_deadline_idx:
+    fields: status, deadline

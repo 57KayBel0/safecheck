@@ -1,0 +1,20 @@
+### One GPS fix reported by the traveller's phone during a trip.
+class: TripLocation
+table: trip_location
+fields:
+  ### The auth user identifier (UUID) of the traveller.
+  ownerId: String
+  tripId: int
+  latitude: double
+  longitude: double
+  ### Horizontal accuracy radius in metres, if the device reported one.
+  accuracyMeters: double?
+  ### When the device took the fix.
+  recordedAt: DateTime
+  ### When the server stored it.
+  receivedAt: DateTime
+indexes:
+  trip_location_trip_time_idx:
+    fields: tripId, recordedAt
+  trip_location_received_idx:
+    fields: receivedAt

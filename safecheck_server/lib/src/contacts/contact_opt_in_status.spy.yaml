@@ -1,0 +1,7 @@
+### Whether a trusted contact agreed to receive SafeCheck messages.
+enum: ContactOptInStatus
+serialized: byName
+values:
+  - pending
+  - accepted
+  - declined

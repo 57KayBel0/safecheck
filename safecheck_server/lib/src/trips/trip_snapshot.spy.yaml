@@ -1,0 +1,9 @@
+### The current trip state together with the server's clock, so the app can
+### show an accurate countdown even if the device clock is wrong.
+class: TripSnapshot
+fields:
+  ### The active trip, or null if the user has none.
+  trip: Trip?
+  ### The trip that just ended, if this snapshot is the result of ending one.
+  endedTrip: Trip?
+  serverTime: DateTime

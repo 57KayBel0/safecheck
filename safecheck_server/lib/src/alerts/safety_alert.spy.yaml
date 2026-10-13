@@ -1,0 +1,22 @@
+### Created by the server when a trip's deadline passes without a check-in.
+### At most one alert exists per trip.
+class: SafetyAlert
+table: safety_alert
+fields:
+  ### The auth user identifier (UUID) of the traveller.
+  ownerId: String
+  tripId: int
+  travellerName: String
+  travellerPhone: String
+  tripType: TripType
+  tripDescription: String
+  deadline: DateTime
+  createdAt: DateTime
+  ### Contacts the alert is addressed to, copied from the trip.
+  contacts: List<ContactSnapshot>
+indexes:
+  safety_alert_owner_idx:
+    fields: ownerId
+  safety_alert_trip_idx:
+    fields: tripId
+    unique: true

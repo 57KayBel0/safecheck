@@ -1,0 +1,11 @@
+### The kind of trip the traveller is taking.
+enum: TripType
+serialized: byName
+values:
+  - walking
+  - minibusTaxi
+  - rideHailing
+  - driving
+  - publicTransport
+  - meetingSomeone
+  - other

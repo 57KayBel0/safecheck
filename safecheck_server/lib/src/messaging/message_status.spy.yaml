@@ -1,0 +1,18 @@
+### Delivery state of an [AlertMessage].
+enum: MessageStatus
+serialized: byName
+values:
+  ### Saved, not yet handed to a sender.
+  - pending
+  ### Claimed by a dispatcher and being handed to the sender.
+  - sending
+  ### Handled by the demo sender: nothing was sent.
+  - simulated
+  ### Accepted by a real provider.
+  - sent
+  ### Confirmed delivered by a real provider.
+  - delivered
+  ### A real provider rejected or could not deliver it.
+  - failed
+  ### Not sent because another preferred channel succeeded.
+  - skipped

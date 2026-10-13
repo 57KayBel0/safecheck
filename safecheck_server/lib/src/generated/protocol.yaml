@@ -1,0 +1,37 @@
+alert:
+  - listAlerts:
+  - listMessages:
+emailIdp:
+  - login:
+  - startRegistration:
+  - verifyRegistrationCode:
+  - finishRegistration:
+  - startPasswordReset:
+  - verifyPasswordResetCode:
+  - finishPasswordReset:
+  - hasAccount:
+googleIdp:
+  - getConfiguration:
+  - login:
+  - loginWithCode:
+  - hasAccount:
+jwtRefresh:
+  - refreshAccessToken:
+contact:
+  - list:
+  - add:
+  - update:
+  - getInvite:
+  - remove:
+profile:
+  - getProfile:
+  - saveProfile:
+location:
+  - recordLocations:
+  - getTripLocations:
+trip:
+  - getActiveTrip:
+  - startTrip:
+  - checkIn:
+  - history:
+  - getTrackingLinks:

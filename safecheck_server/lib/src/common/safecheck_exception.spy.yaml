@@ -1,0 +1,8 @@
+### A user-facing error raised by SafeCheck endpoints. The [message] is safe to
+### show in the app, and [code] lets the client react to specific failures.
+exception: SafeCheckException
+fields:
+  ### Human-readable explanation of what went wrong.
+  message: String
+  ### Machine-readable error code, e.g. `validation`, `not_found`, `conflict`.
+  code: String

@@ -1,0 +1,11 @@
+### Who can see a trip's location, chosen by the traveller per trip.
+enum: LocationSharing
+serialized: byName
+values:
+  ### No location is collected.
+  - off
+  ### Location is collected during the trip but contacts can only see it
+  ### after a missed check-in raises an alert.
+  - afterAlert
+  ### Contacts with the trip's link can follow the trip while it is active.
+  - live

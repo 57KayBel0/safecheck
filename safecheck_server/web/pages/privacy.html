@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin">
+  <title>Privacy policy · SafeCheck</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 1rem/1.65 system-ui, sans-serif; margin: 0; }
+    main { max-width: 760px; padding: 24px; margin: auto; }
+    a { color: #00897b; }
+    .review { border: 1px solid #b7791f; padding: 16px; border-radius: 8px; }
+  </style>
+</head>
+<body><main>
+  <nav><a href="/">SafeCheck home</a></nav>
+  <h1>SafeCheck privacy policy</h1>
+  <p>Draft dated 12 October 2026. SafeCheck is a personal safety prototype
+    created by Kabelo Motshabi Makgae for check-ins and trusted-contact alerts.</p>
+  <p>SafeCheck is operated by Kabelo Motshabi Makgae. For support, feedback or
+    privacy requests, email
+    <a href="mailto:kabelo.6a8fbeb6546d3829dedadcf7@gmail.com">kabelo.6a8fbeb6546d3829dedadcf7@gmail.com</a>.</p>
+  <p class="review">Draft for owner review before publication. Backup and log
+    retention, current live-delivery configuration and the process for handling
+    data requests still need review.</p>
+
+  <h2>Account and Google identity data</h2>
+  <p>Email accounts use an email address, password-based authentication and
+    verification/recovery flows through Serverpod authentication. Passwords are
+    handled by that authentication system, not included in contact alerts.</p>
+  <p>When Google sign-in is configured and you choose it, Google provides an
+    account identifier, email address and its verification status, name and,
+    where available, a profile picture URL. The Serverpod Google identity
+    provider records the Google account identifier and email, and can create an
+    authentication profile with your name and download your profile picture to
+    its configured storage. Google identity data is used to authenticate you
+    and establish your account. The requested scopes are openid, userinfo.email
+    and userinfo.profile. SafeCheck does not request Google Contacts, Gmail or
+    Drive access. Google authorization codes and tokens are processed during
+    sign-in; the OAuth client credential stays on the server.</p>
+  <p>The app normally holds its SafeCheck login credentials in memory. When you
+    select Remember me, it uses the SDK's device/browser storage to persist a
+    session; an email entered through email login can also be remembered.
+    Turning Remember me off removes the stored session and remembered email.
+    Signing out clears stored session credentials but does not delete server
+    records; a remembered email can remain until Remember me is turned off.</p>
+
+  <h2>Profiles, contacts and trips</h2>
+  <p>Your SafeCheck profile records your chosen display name and South African
+    phone number, account identifier and creation/update times. Trusted-contact
+    records include names, phone numbers, optional relationships, notification
+    preferences, invite links and acceptance/decline status and times.</p>
+  <p>Phone contact selection reads the contact you choose on a supported device
+    or browser. You review its name and number before saving; manual entry is
+    available. SafeCheck does not import your entire address book.</p>
+  <p>Trips record their type, description, duration, start/deadline/end times,
+    check-in status, location-sharing choice and a snapshot of the contacts at
+    trip start. Alerts and message history record recipients, message content,
+    channel, timestamps, delivery/simulation status and failure details.</p>
+
+  <h2>Location and tracking links</h2>
+  <p>Location sharing is selected per trip: off, live, or visible after a missed
+    check-in. When enabled and device permission is granted, the running app
+    requests GPS fixes approximately every 30 seconds. Latitude, longitude,
+    reported accuracy, fix time and server receipt time are stored. Updates
+    depend on the device, browser, app activity and network; continuous
+    background tracking is not guaranteed. Location is not collected for trips
+    whose location-sharing mode is off.</p>
+  <p>Per-contact tracking links reveal trip status, traveller name and, when
+    permitted by the trip's sharing mode, the stored location route. Possession
+    of a link is sufficient to access its page without an account. Anyone to
+    whom a link is forwarded may use it. Live mode shows locations while the
+    trip is active; after-alert mode shows them after a missed check-in. A safe
+    check-in hides location. After a missed check-in, location visibility ends
+    after 48 hours. This is an access rule, not deletion of the records or link.</p>
+
+  <h2>Use and sharing</h2>
+  <p>Data supports authentication, profile/contact management, deadlines,
+    check-ins, alerts, trip history and chosen location sharing. Contact-facing
+    invite pages disclose the contact and traveller names and invite status.
+    Invites are shared by the traveller; SafeCheck does not automatically send
+    them. Acceptance/decline can be changed using the invite link. These choices
+    are not a general account deletion or all-channel opt-out mechanism.</p>
+  <p>Alert content may disclose your display name, phone number, trip type or
+    description, timing and missed check-in, and a tracking link when enabled.
+    Trip snapshots determine alert recipients; later contact edits do not
+    rewrite those snapshots. SMS preferences can permit SMS even without an
+    accepted WhatsApp invitation.</p>
+  <p>The default sender simulates messages. Simulated SMS is labelled exactly
+    “Demo — SMS not sent”; WhatsApp is simulated too. An app alert or simulated
+    message does not establish notification of a contact. The code also
+    supports real SMS through BulkSMS only when live mode and both server-side
+    provider credentials are explicitly configured. In that mode recipient
+    phone numbers and SMS content are submitted to BulkSMS and may reach the
+    recipient. WhatsApp remains simulated by the implemented sender. This draft
+    does not assert that real delivery is enabled on the deployed service.</p>
+  <p>Serverpod Cloud hosts the production service and its database/storage.
+    Serverpod Cloud's email service handles production verification/recovery
+    email. Google processes Google sign-in. Maps fetch tiles from OpenStreetMap;
+    public tracking pages also load Leaflet assets from cdnjs.cloudflare.com.
+    Those requests
+    expose normal connection information, such as IP address and requested map
+    area, to the relevant provider. Choosing Open in Google Maps sends the shown
+    coordinates to Google Maps. Providers have their own privacy practices.</p>
+
+  <h2>Storage, retention and deletion</h2>
+  <p>Account, profile, contact, trip, alert, message and location records are
+    stored in the server database; authentication images use configured cloud
+    storage or the database fallback. Server/hosting logs may contain operation
+    metadata, errors and phone numbers or message information logged by the
+    implementation. The Serverpod Cloud project region is Europe. Public and
+    private object-storage regions are Europe. These facts do not establish
+    the location of every provider or backup. Log/backup lifetimes and provider
+    retention periods still need confirmation from the operator.</p>
+  <p>The recurring server sweep deletes location points whose server receipt
+    time is more than 30 days old when the sweep runs successfully. This does
+    not delete trips, snapshots, alerts, messages or tracking-link records and
+    does not establish backup deletion. Cleanup depends on the running server.</p>
+  <p>Removing a contact deletes that current contact row. It does not remove
+    existing trip snapshots, alerts, messages or tracking links. Profile editing
+    updates the current profile. There is no implemented user-facing account
+    deletion or complete history-erasure workflow, and no automatic retention
+    period is implemented for these other application records. Signing out,
+    revoking Google access or a tracking link ceasing to show locations does
+    not delete SafeCheck records.</p>
+
+  <h2>Questions and review</h2>
+  <p>You can email access, correction or deletion requests to
+    <a href="mailto:kabelo.6a8fbeb6546d3829dedadcf7@gmail.com">kabelo.6a8fbeb6546d3829dedadcf7@gmail.com</a>.
+    The request-handling process is not yet established. Emailing a request
+    does not trigger automatic deletion, and no response time is guaranteed.
+    The same address is available for support and feedback. The prototype
+    does not promise regulatory compliance,
+    confidentiality of forwarded links, guaranteed message delivery or an
+    emergency response.</p>
+</main></body>
+</html>

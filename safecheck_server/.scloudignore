@@ -1,0 +1,14 @@
+# Never upload local credentials or local database/runtime state.
+/config/passwords.yaml
+/config/firebase_service_account_key.json
+/.serverpod/
+**/sp_*.db*
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+/.scloud/
+
+# serverpod run flutter_build creates this before Cloud packages the project.
+# The server's .gitignore excludes it, so explicitly include the deploy build.
+!/web/app/
+!/web/app/**

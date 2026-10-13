@@ -1,0 +1,31 @@
+### A person who should be alerted when the owner misses a check-in.
+### A user can have at most five trusted contacts.
+class: TrustedContact
+table: trusted_contact
+fields:
+  ### The auth user identifier (UUID) of the owner.
+  ownerId: String
+  name: String
+  ### South African phone number in E.164 format (+27...).
+  phoneNumber: String
+  ### Optional relationship, e.g. "Sister" or "Housemate".
+  relationship: String?
+  createdAt: DateTime
+  updatedAt: DateTime
+  ### The contact's answer to their invite. Reset to `pending` when the phone
+  ### number changes, because the number may belong to someone else.
+  optInStatus: ContactOptInStatus, default=pending
+  ### When the contact accepted or declined.
+  optInRespondedAt: DateTime?
+  ### Secret token in the contact's invite link. Never sent to clients.
+  inviteToken: String?, scope=serverOnly
+  ### Whether this contact prefers WhatsApp alerts.
+  notifyByWhatsapp: bool, default=true
+  ### Whether SMS should be used as a fallback or alternate alert channel.
+  notifyBySms: bool, default=true
+indexes:
+  trusted_contact_owner_idx:
+    fields: ownerId
+  trusted_contact_invite_token_idx:
+    fields: inviteToken
+    unique: true

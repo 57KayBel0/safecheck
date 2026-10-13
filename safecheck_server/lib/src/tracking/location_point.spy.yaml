@@ -1,0 +1,7 @@
+### A GPS fix sent by the app. Validated before it becomes a [TripLocation].
+class: LocationPoint
+fields:
+  latitude: double
+  longitude: double
+  accuracyMeters: double?
+  recordedAt: DateTime

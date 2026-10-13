@@ -1,0 +1,8 @@
+### Lifecycle of a trip. A trip starts `active` and ends exactly once, either
+### `checkedIn` by the owner or `missed` when the deadline passes.
+enum: TripStatus
+serialized: byName
+values:
+  - active
+  - checkedIn
+  - missed

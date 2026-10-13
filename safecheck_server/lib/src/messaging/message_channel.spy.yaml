@@ -1,0 +1,6 @@
+### How a message reaches a trusted contact.
+enum: MessageChannel
+serialized: byName
+values:
+  - sms
+  - whatsapp

@@ -1,0 +1,37 @@
+### A message to a trusted contact about a missed check-in.
+###
+### Rows are written with status `pending` in the same transaction as the
+### alert (an outbox), then handed to the configured message sender. The only
+### sender today is the demo sender, which sends nothing and marks the message
+### `simulated`; the app labels those "Demo — SMS not sent" or
+### "Demo — WhatsApp not sent".
+###
+### The table keeps its original name `simulated_sms` so existing rows are
+### preserved.
+class: AlertMessage
+table: simulated_sms
+fields:
+  ### The auth user identifier (UUID) of the traveller.
+  ownerId: String
+  alertId: int
+  tripId: int
+  recipientName: String
+  recipientPhone: String
+  body: String
+  createdAt: DateTime
+  ### Channel the message is meant for. WhatsApp is only chosen for contacts
+  ### who accepted their invite.
+  channel: MessageChannel, default=sms
+  status: MessageStatus, default=pending
+  ### When the sender last changed [status].
+  statusUpdatedAt: DateTime?
+  ### Error from the sender, if [status] is `failed`.
+  failureReason: String?
+indexes:
+  simulated_sms_owner_idx:
+    fields: ownerId
+  simulated_sms_alert_recipient_idx:
+    fields: alertId, recipientPhone, channel
+    unique: true
+  simulated_sms_status_idx:
+    fields: status

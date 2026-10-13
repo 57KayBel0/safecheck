@@ -1,0 +1,70 @@
+# Files and directories created by pub
+.dart_tool/
+.packages
+
+# Pubspec overrides
+pubspec_overrides.yaml
+
+# Agents
+.dart_skills/
+.agents/
+.claude/
+.gemini/
+.cursor/
+.vscode/mcp.json
+.codex/
+.mcp.json
+
+# Serverpod Cloud CLI
+.scloud/
+**/.scloud/
+
+# Local Serverpod credentials and private development data
+safecheck_server/config/passwords.yaml
+safecheck_server/config/firebase_service_account_key.json
+safecheck_server/.serverpod/
+**/sp_*.db*
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+
+# Secrets and private credential exports (templates may be committed)
+**/passwords.yaml*
+.env
+.env.*
+!.env.example
+!.env.template
+**/client_secret*.json
+**/*service_account*.json
+**/*service-account*.json
+**/*credentials*.json
+**/*token-id*.txt
+**/*token-secret*.txt
+**/bulkSmsToken*.txt
+**/bulksms*.txt
+*.pem
+*.p12
+*.pfx
+*.key
+*.keystore
+key.properties
+private/
+.private/
+
+# Local runtime, build, logs and verification artifacts
+**/.serverpod/
+**/build/
+**/.dart_tool/
+**/.pub-cache/
+**/.pub/
+**/doc/api/
+*.log
+*.pid
+*.sock
+*.nul-backup
+*.bak
+*.tmp
+__pycache__/
+*.pyc
+.idea/
+.vscode/

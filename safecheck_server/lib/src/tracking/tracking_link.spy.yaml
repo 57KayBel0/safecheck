@@ -1,0 +1,20 @@
+### A secret per-contact link to a trip's location page. Created when a trip
+### starts with location sharing on. Whether it currently shows a location
+### depends on the trip's sharing mode and state (see TrackingService).
+class: TrackingLink
+table: tracking_link
+fields:
+  ### Unguessable token in the URL. No endpoint returns this model; the
+  ### owner only receives the share URL through [TrackingLinkInfo].
+  token: String
+  ownerId: String
+  tripId: int
+  contactName: String
+  contactPhone: String
+  createdAt: DateTime
+indexes:
+  tracking_link_token_idx:
+    fields: token
+    unique: true
+  tracking_link_trip_idx:
+    fields: tripId

@@ -1,0 +1,16 @@
+### The traveller's own details, shown to trusted contacts in alerts.
+class: UserProfile
+table: user_profile
+fields:
+  ### The auth user identifier (UUID) of the owner.
+  ownerId: String
+  ### Name shown to trusted contacts.
+  displayName: String
+  ### South African phone number in E.164 format (+27...).
+  phoneNumber: String
+  createdAt: DateTime
+  updatedAt: DateTime
+indexes:
+  user_profile_owner_idx:
+    fields: ownerId
+    unique: true

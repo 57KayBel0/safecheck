@@ -1,0 +1,60 @@
+name: safecheck_server
+description: Starting point for a Serverpod server.
+# version: 1.0.0
+# homepage: https://www.example.com
+
+environment:
+  sdk: '^3.12.2'
+
+resolution: workspace
+
+dependencies:
+  serverpod: 4.0.3
+  serverpod_auth_idp_server: 4.0.3
+  serverpod_cloud_storage: 4.0.3
+
+dev_dependencies:
+  yaml: ^3.1.3
+  lints: '>=3.0.0 <7.0.0'
+  serverpod_test: 4.0.3
+  test: ^1.25.5
+
+serverpod:
+  scripts:
+    # Build a release Flutter web app with production-safe Google settings.
+    # Set SAFE_CHECK_GOOGLE_CLIENT_ID and SAFE_CHECK_WEB_ORIGIN together to
+    # enable Google. If absent, the release build keeps Google unavailable.
+    flutter_build:
+      windows: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_flutter_web.ps1
+      posix: sh scripts/build_flutter_web.sh
+
+  # Companion Flutter apps that `serverpod start` can launch (Ctrl+R), keyed
+  # by a display alias. The default device is the web server, opening the
+  # machine's default browser when ready. All non-reserved properties are
+  # forwarded to `flutter run`. For the best IDE debugging experience, use
+  # `chrome` or a native target as the device. See the example below:
+  #
+  # Admin:
+  #   path: ../apps/admin_flutter
+  #   displayName: "Admin app"
+  #   auto_launch: true
+  #   device: chrome
+  #   target: lib/main.dart
+  #   web-hostname: 0.0.0.0
+  #   web-port: 8090
+  #   release: true
+  #   pub: false
+  #   dart-define:
+  #     API_URL=https://admin.example.com
+  #     FLAVOR=production
+  flutter_apps:
+    safecheck:
+      path: ../safecheck_flutter
+      displayName: "Safecheck app"
+      auto_launch: true
+      target: lib/driver.dart
+      web-port: 55267
+      dart-define:
+        GOOGLE_CLIENT_ID: 941528893459-biafi7aa10bbh07r8fl59gbvvffecac0.apps.googleusercontent.com
+        GOOGLE_IDP_CONFIGURED: "true"
+        GOOGLE_WEB_REDIRECT_URI: http://localhost:55267/auth.html
