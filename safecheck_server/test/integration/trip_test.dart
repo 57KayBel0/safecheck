@@ -170,8 +170,13 @@ void main() {
             messages.map((m) => m.recipientPhone).toSet(),
             {'+27830000010', '+27830000011'},
           );
-          expect(messages.first.body, contains('Thandi'));
-          expect(messages.first.body, contains('did not check in'));
+          for (final message in messages) {
+            expect(message.alertId, alerts.single.id);
+            expect(message.tripId, trip.id);
+            expect(message.channel, MessageChannel.sms);
+            expect(message.status, MessageStatus.simulated);
+            expect(message.body, 'SafeCheck: Thandi missed check-in.');
+          }
 
           expect(
             (await endpoints.trip.history(alice)).single.status,
