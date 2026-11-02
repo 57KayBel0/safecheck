@@ -28,11 +28,12 @@ and cannot guarantee safety, message delivery or an emergency response.
   saving; manual entry remains available.
 - Contact invitation links with acceptance/decline and channel preferences.
 - Trip types, descriptions, deadlines, countdowns, check-in, history, alerts
-  and message status. Each trip snapshots its contacts.
+  and message status. Each trip snapshots its contacts. A review step refreshes
+  contacts and shows the trip, timing and privacy choices before confirmation.
 - Persistent server deadline calls, a recurring overdue sweep and idempotent
   alert processing. One active trip per user and ownership checks are enforced
   on the backend.
-- Location sharing off, live, or visible after a missed check-in. Location
+- Location sharing off by default, live, or visible after a missed check-in. Location
   permission guidance, retry, bounded GPS/upload waits and an explicit option
   to continue without location keep check-in available when tracking fails.
 - Recorded-route maps and per-contact tracking links. A safe check-in hides
@@ -63,6 +64,15 @@ trip/alert invariants. BulkSMS integration runs on the server, never in Flutter.
 
 Generated server code in `lib/src/generated/` is also maintained by Serverpod.
 Change models/endpoints and let the existing workflow regenerate it.
+
+## AI planning status
+
+A backend-only Meta Model API adapter and draft validator are implemented with
+mocked provider tests. They prepare a proposal or clarification questions and
+cannot start trips or send alerts. The authenticated endpoint, Flutter planning
+flow and live-provider verification are still pending. See
+[AI_PLANNER.md](safecheck_server/AI_PLANNER.md) for the service contract, private
+configuration and remaining integration steps.
 
 ## Prerequisites and local setup
 
@@ -167,6 +177,7 @@ Backend tests use Serverpod's managed test database, not Docker:
 Set-Location safecheck_server
 dart test
 dart test test/public_links_test.dart test/bulk_sms_message_sender_test.dart test/integration/tracking_test.dart
+dart test test/meta_trip_planner_test.dart test/planner_protocol_test.dart
 ```
 
 Flutter tests:
@@ -174,14 +185,15 @@ Flutter tests:
 ```powershell
 Set-Location safecheck_flutter
 flutter test
+flutter test test/trip_review_test.dart
 flutter test test/trip_location_controller_test.dart test/trip_location_status_test.dart
 ```
 
-The development environment has intermittently blocked analysis or SDK cache
-access. A blocked check is not a pass. Recent source verification passed 25
-focused origin, mocked BulkSMS and tracking tests; the latest location widget
-fix still needs an external rerun. Android SMS link detection and browser
-permission behavior require device testing.
+GitHub Actions checks backend analysis, formatting and tests, plus Flutter
+analysis and widget tests. A blocked check is not a pass. Widget tests do not
+establish that the deployed build matches source or that real messages arrive.
+Android SMS link detection and browser permission behavior require device
+testing through the existing Serverpod MCP workflow.
 
 ## Known limitations and privacy
 
@@ -202,8 +214,11 @@ permission behavior require device testing.
 
 ## Hackathon submission
 
+See [HACKATHON_NOTES.md](HACKATHON_NOTES.md) for the scope of the current
+improvements and outstanding Meta-model integration and submission work.
+
 Replace the demo-video placeholder, confirm the deployed build and required
-judge flows, and supply the repository URL. A private repository requires judge
-collaborator access or the submission platform's approved private-repository
-access mechanism; a URL alone does not grant access. No project licence is
-added or changed by this preparation.
+judge flows, and supply the repository URL. The Meta hackathon participant
+guide requires a public repository. Review the repository contents, visibility
+and licensing before publication, and verify that judges can open both the
+repository and video links.
