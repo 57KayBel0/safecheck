@@ -93,9 +93,7 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _editProfile() async {
     final updated = await Navigator.of(context).push<UserProfile>(
-      MaterialPageRoute(
-        builder: (_) => ProfileScreen(existing: _profile),
-      ),
+      MaterialPageRoute(builder: (_) => ProfileScreen(existing: _profile)),
     );
     if (updated != null && mounted) {
       setState(() => _profile = updated);
@@ -246,7 +244,10 @@ class _AppShellState extends State<AppShell> {
         child: IndexedStack(
           index: _tab,
           children: [
-            TripScreen(onOpenContacts: () => setState(() => _tab = 1)),
+            TripScreen(
+              onOpenContacts: () => setState(() => _tab = 1),
+              onOpenAlerts: () => setState(() => _tab = 3),
+            ),
             const ContactsScreen(),
             const HistoryScreen(),
             const AlertsScreen(),
@@ -271,10 +272,7 @@ class _AppShellState extends State<AppShell> {
             selectedIcon: Icon(Icons.people),
             label: 'Contacts',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.history),
-            label: 'History',
-          ),
+          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(
             icon: Icon(Icons.notifications_outlined),
             selectedIcon: Icon(Icons.notifications),

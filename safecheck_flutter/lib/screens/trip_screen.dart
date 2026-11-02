@@ -15,12 +15,19 @@ import '../reminders/reminder_feedback.dart';
 import '../util/errors.dart';
 import '../util/format.dart';
 import '../widgets/state_views.dart';
+import '../widgets/start_trip_form.dart';
+import '../widgets/trip_completion_notice.dart';
 
 /// Home tab: start a trip, or follow the active trip and check in.
 class TripScreen extends StatefulWidget {
-  const TripScreen({super.key, required this.onOpenContacts});
+  const TripScreen({
+    super.key,
+    required this.onOpenContacts,
+    required this.onOpenAlerts,
+  });
 
   final VoidCallback onOpenContacts;
+  final VoidCallback onOpenAlerts;
 
   @override
   State<TripScreen> createState() => _TripScreenState();
@@ -38,7 +45,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
 
   /// Server clock minus device clock, so the countdown follows the server.
   Duration _clockOffset = Duration.zero;
-  int _contactCount = 0;
+  List<TrustedContact> _contacts = const [];
 
   bool _checkingIn = false;
   CheckInReminderMode _reminderMode = CheckInReminderMode.silent;
@@ -119,7 +126,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
         if (snapshot.trip == null && previous?.id != null) {
           _reminderGate.cancel(previous!.id!);
         }
-        _contactCount = contacts.length;
+        _contacts = contacts;
         if (ended != null) _endedTrip = ended;
         _loading = false;
         _loadError = null;
@@ -287,8 +294,9 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_endedTrip != null && _trip == null) ...[
-                    _EndedTripBanner(
-                      trip: _endedTrip!,
+                    TripCompletionNotice(
+                      status: _endedTrip!.status,
+                      onOpenAlerts: widget.onOpenAlerts,
                       onDismiss: () => setState(() => _endedTrip = null),
                     ),
                     const SizedBox(height: 16),
@@ -310,8 +318,10 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                       onCheckIn: _checkIn,
                     )
                   else
-                    _StartTripForm(
-                      contactCount: _contactCount,
+                    StartTripForm(
+                      contacts: _contacts,
+                      loadContacts: () => client.contact.list(),
+                      serverNow: () => _serverNow,
                       onOpenContacts: widget.onOpenContacts,
                       onStart: _startTrip,
                     ),
@@ -320,71 +330,6 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EndedTripBanner extends StatelessWidget {
-  const _EndedTripBanner({required this.trip, required this.onDismiss});
-
-  final Trip trip;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final safe = trip.status == TripStatus.checkedIn;
-    final bg = safe ? colors.primaryContainer : colors.errorContainer;
-    final fg = safe ? colors.onPrimaryContainer : colors.onErrorContainer;
-    return Semantics(
-      liveRegion: true,
-      child: Card(
-        color: bg,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Icon(
-                  safe ? Icons.verified_user : Icons.warning_amber_rounded,
-                  color: fg,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      safe ? "You're checked in" : 'Check-in deadline missed',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: fg,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      safe
-                          ? 'Your trip ended safely and no alert was raised.'
-                          : 'An alert was created for your trusted contacts. '
-                                'This is a demo, so no SMS was sent. See the '
-                                'Alerts tab for details.',
-                      style: TextStyle(color: fg),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: 'Dismiss',
-                onPressed: onDismiss,
-                icon: Icon(Icons.close, color: fg),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -590,7 +535,8 @@ class _ActiveTripView extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           'Saved when the trip started. If you miss the deadline, an alert '
-          'is created for them (demo: no SMS is sent).',
+          'is created using their saved channel preferences. Check Alerts '
+          'for each message’s status.',
           style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
@@ -670,9 +616,7 @@ class _LiveTripMapState extends State<_LiveTripMap> {
     try {
       final locations = await client.location
           .getTripLocations(tripId)
-          .timeout(
-            const Duration(seconds: 20),
-          );
+          .timeout(const Duration(seconds: 20));
 
       if (!mounted) return;
 
@@ -709,10 +653,7 @@ class _LiveTripMapState extends State<_LiveTripMap> {
 
     final latest = _points.last;
 
-    _mapController.move(
-      LatLng(latest.latitude, latest.longitude),
-      16,
-    );
+    _mapController.move(LatLng(latest.latitude, latest.longitude), 16);
   }
 
   @override
@@ -728,10 +669,7 @@ class _LiveTripMapState extends State<_LiveTripMap> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.location_on,
-                  color: colors.primary,
-                ),
+                Icon(Icons.location_on, color: colors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -750,18 +688,14 @@ class _LiveTripMapState extends State<_LiveTripMap> {
             const SizedBox(height: 4),
             Text(
               'This map shows points confirmed by the server. It does not guarantee ongoing tracking.',
-              style: text.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
+              style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
 
             if (_loading)
               const SizedBox(
                 height: 220,
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: Center(child: CircularProgressIndicator()),
               )
             else if (_error != null)
               SizedBox(
@@ -797,11 +731,7 @@ class _LiveTripMapState extends State<_LiveTripMap> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.my_location,
-                        color: colors.primary,
-                        size: 38,
-                      ),
+                      Icon(Icons.my_location, color: colors.primary, size: 38),
                       const SizedBox(height: 8),
                       const Text(
                         'Waiting for your first location…',
@@ -835,19 +765,11 @@ class _LiveTripMapState extends State<_LiveTripMap> {
     final colors = Theme.of(context).colorScheme;
 
     final route = _points
-        .map(
-          (point) => LatLng(
-            point.latitude,
-            point.longitude,
-          ),
-        )
+        .map((point) => LatLng(point.latitude, point.longitude))
         .toList();
 
     final latest = _points.last;
-    final latestPosition = LatLng(
-      latest.latitude,
-      latest.longitude,
-    );
+    final latestPosition = LatLng(latest.latitude, latest.longitude);
 
     return SizedBox(
       height: 280,
@@ -889,15 +811,9 @@ class _LiveTripMapState extends State<_LiveTripMap> {
                         decoration: BoxDecoration(
                           color: colors.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colors.surface,
-                            width: 4,
-                          ),
+                          border: Border.all(color: colors.surface, width: 4),
                           boxShadow: const [
-                            BoxShadow(
-                              blurRadius: 8,
-                              color: Colors.black26,
-                            ),
+                            BoxShadow(blurRadius: 8, color: Colors.black26),
                           ],
                         ),
                         child: Icon(
@@ -964,31 +880,21 @@ class _LiveTripMapState extends State<_LiveTripMap> {
             children: [
               const Icon(Icons.gps_fixed, size: 20),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'GPS accuracy ±${accuracy.round()} m',
-                ),
-              ),
+              Expanded(child: Text('GPS accuracy ±${accuracy.round()} m')),
             ],
           ),
         ],
         const SizedBox(height: 8),
         Row(
           children: [
-            Icon(
-              Icons.lock_outline,
-              size: 20,
-              color: colors.primary,
-            ),
+            Icon(Icons.lock_outline, size: 20, color: colors.primary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 widget.trip.locationSharing == LocationSharing.live
                     ? 'Live location sharing is enabled for this trip.'
                     : 'Location will be shared after a missed check-in.',
-                style: text.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
+                style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
             ),
           ],
@@ -1019,308 +925,6 @@ class _StatusPill extends StatelessWidget {
           color: color,
           fontWeight: FontWeight.bold,
         ),
-      ),
-    );
-  }
-}
-
-class _StartTripForm extends StatefulWidget {
-  const _StartTripForm({
-    required this.contactCount,
-    required this.onOpenContacts,
-    required this.onStart,
-  });
-
-  final int contactCount;
-  final VoidCallback onOpenContacts;
-  final Future<void> Function(
-    TripType,
-    String,
-    int,
-    CheckInReminderMode,
-    LocationSharing,
-  )
-  onStart;
-
-  @override
-  State<_StartTripForm> createState() => _StartTripFormState();
-}
-
-class _StartTripFormState extends State<_StartTripForm> {
-  static const _presets = [15, 30, 60, 120, 240];
-
-  final _formKey = GlobalKey<FormState>();
-  final _description = TextEditingController();
-  final _customMinutes = TextEditingController();
-  TripType _type = TripType.walking;
-  int? _presetMinutes = 30;
-  bool _starting = false;
-  CheckInReminderMode _reminderMode = CheckInReminderMode.silent;
-  LocationSharing _sharing = LocationSharing.live;
-  String? _error;
-
-  @override
-  void dispose() {
-    _description.dispose();
-    _customMinutes.dispose();
-    super.dispose();
-  }
-
-  int? get _minutes => _presetMinutes ?? int.tryParse(_customMinutes.text);
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _starting = true;
-      _error = null;
-    });
-    try {
-      await widget.onStart(
-        _type,
-        _description.text,
-        _minutes!,
-        _reminderMode,
-        _sharing,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = friendlyError(e));
-    } finally {
-      if (mounted) setState(() => _starting = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final colors = Theme.of(context).colorScheme;
-    final noContacts = widget.contactCount == 0;
-
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Start a trip', style: text.headlineSmall),
-          const SizedBox(height: 4),
-          Text(
-            "Tell SafeCheck where you're going and when you expect to "
-            "arrive. If you don't check in in time, an alert is created.",
-            style: text.bodyLarge,
-          ),
-          const SizedBox(height: 16),
-          if (noContacts) ...[
-            Card(
-              color: colors.secondaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Add a trusted contact first',
-                      style: text.titleMedium?.copyWith(
-                        color: colors.onSecondaryContainer,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'You need at least one trusted contact before starting '
-                      'a trip.',
-                      style: TextStyle(color: colors.onSecondaryContainer),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.tonalIcon(
-                      onPressed: widget.onOpenContacts,
-                      icon: const Icon(Icons.person_add_alt_1),
-                      label: const Text('Add contacts'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          Text('Trip type', style: text.titleMedium),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final type in TripType.values)
-                ChoiceChip(
-                  avatar: Icon(tripTypeIcon(type), size: 18),
-                  label: Text(tripTypeLabel(type)),
-                  selected: _type == type,
-                  showCheckmark: false,
-                  onSelected: (_) => setState(() => _type = type),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          TextFormField(
-            controller: _description,
-            decoration: const InputDecoration(
-              labelText: 'Description',
-              hintText: 'e.g. Taxi from Bree Street rank to Soweto',
-            ),
-            maxLength: 200,
-            minLines: 1,
-            maxLines: 3,
-            textCapitalization: TextCapitalization.sentences,
-            validator: (v) => (v ?? '').trim().isEmpty
-                ? 'Describe your trip so contacts know where you were.'
-                : null,
-          ),
-          const SizedBox(height: 12),
-          Text('Check in within', style: text.titleMedium),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final m in _presets)
-                ChoiceChip(
-                  label: Text(formatDurationShort(m)),
-                  selected: _presetMinutes == m,
-                  onSelected: (_) => setState(() => _presetMinutes = m),
-                ),
-              ChoiceChip(
-                label: const Text('Custom'),
-                selected: _presetMinutes == null,
-                onSelected: (_) => setState(() => _presetMinutes = null),
-              ),
-            ],
-          ),
-          if (_presetMinutes == null) ...[
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _customMinutes,
-              decoration: const InputDecoration(
-                labelText: 'Minutes',
-                helperText: 'Between 1 minute and 24 hours (1440 minutes)',
-                suffixText: 'min',
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (_) => setState(() {}),
-              validator: (v) {
-                final n = int.tryParse((v ?? '').trim());
-                if (n == null || n < 1 || n > 1440) {
-                  return 'Enter a number from 1 to 1440.';
-                }
-                return null;
-              },
-            ),
-          ],
-          const SizedBox(height: 20),
-          DropdownButtonFormField<LocationSharing>(
-            initialValue: _sharing,
-            decoration: const InputDecoration(labelText: 'Location sharing'),
-            items: const [
-              DropdownMenuItem(
-                value: LocationSharing.live,
-                child: Text('Live'),
-              ),
-              DropdownMenuItem(
-                value: LocationSharing.afterAlert,
-                child: Text('After a missed check-in'),
-              ),
-              DropdownMenuItem(value: LocationSharing.off, child: Text('Off')),
-            ],
-            onChanged: _starting
-                ? null
-                : (value) {
-                    if (value != null) setState(() => _sharing = value);
-                  },
-          ),
-          if (_sharing != LocationSharing.off)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'After starting, use Enable location if permission is needed. SafeCheck records GPS points while this app is running. '
-                'You can continue without location if it is unavailable; your check-in still works.',
-              ),
-            ),
-          Text('Reminder', style: text.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            'Reminders appear only while this app is open. A closed or '
-            'suspended browser may not show one; the server still processes '
-            'the check-in deadline.',
-            style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          Text(
-            'Sound or vibration may attract attention.',
-            style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          RadioGroup<CheckInReminderMode>(
-            groupValue: _reminderMode,
-            onChanged: (value) {
-              if (value != null && !_starting && reminderModeSupported(value)) {
-                setState(() => _reminderMode = value);
-              }
-            },
-            child: Column(
-              children: [
-                RadioListTile<CheckInReminderMode>(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Silent (default)'),
-                  subtitle: const Text('In-app reminder only'),
-                  value: CheckInReminderMode.silent,
-                  enabled: !_starting,
-                ),
-                RadioListTile<CheckInReminderMode>(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    reminderModeSupported(CheckInReminderMode.vibration)
-                        ? 'Vibration'
-                        : 'Vibration (unavailable on this platform)',
-                  ),
-                  subtitle: const Text('May attract attention'),
-                  value: CheckInReminderMode.vibration,
-                  enabled:
-                      !_starting &&
-                      reminderModeSupported(CheckInReminderMode.vibration),
-                ),
-                RadioListTile<CheckInReminderMode>(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    reminderModeSupported(CheckInReminderMode.sound)
-                        ? 'Sound'
-                        : 'Sound (unavailable on this platform)',
-                  ),
-                  subtitle: const Text('May attract attention'),
-                  value: CheckInReminderMode.sound,
-                  enabled:
-                      !_starting &&
-                      reminderModeSupported(CheckInReminderMode.sound),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_minutes != null && _minutes! >= 1 && _minutes! <= 1440)
-            Text(
-              'About ${formatTime(context, DateTime.now().add(Duration(minutes: _minutes!)))}'
-              '. The server sets the exact deadline when the trip starts.',
-              style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          const SizedBox(height: 16),
-          if (_error != null) ...[
-            ErrorBanner(message: _error!),
-            const SizedBox(height: 16),
-          ],
-          FilledButton.icon(
-            onPressed: _starting || noContacts ? null : _submit,
-            icon: _starting
-                ? const SizedBox.square(
-                    dimension: 22,
-                    child: CircularProgressIndicator(strokeWidth: 3),
-                  )
-                : const Icon(Icons.play_arrow_rounded),
-            label: Text(_starting ? 'Starting trip…' : 'Start trip'),
-          ),
-        ],
       ),
     );
   }

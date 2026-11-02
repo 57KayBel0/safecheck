@@ -28,11 +28,12 @@ and cannot guarantee safety, message delivery or an emergency response.
   saving; manual entry remains available.
 - Contact invitation links with acceptance/decline and channel preferences.
 - Trip types, descriptions, deadlines, countdowns, check-in, history, alerts
-  and message status. Each trip snapshots its contacts.
+  and message status. Each trip snapshots its contacts. A review step refreshes
+  contacts and shows the trip, timing and privacy choices before confirmation.
 - Persistent server deadline calls, a recurring overdue sweep and idempotent
   alert processing. One active trip per user and ownership checks are enforced
   on the backend.
-- Location sharing off, live, or visible after a missed check-in. Location
+- Location sharing off by default, live, or visible after a missed check-in. Location
   permission guidance, retry, bounded GPS/upload waits and an explicit option
   to continue without location keep check-in available when tracking fails.
 - Recorded-route maps and per-contact tracking links. A safe check-in hides
@@ -174,6 +175,7 @@ Flutter tests:
 ```powershell
 Set-Location safecheck_flutter
 flutter test
+flutter test test/trip_review_test.dart
 flutter test test/trip_location_controller_test.dart test/trip_location_status_test.dart
 ```
 
@@ -202,8 +204,11 @@ permission behavior require device testing.
 
 ## Hackathon submission
 
+See [HACKATHON_NOTES.md](HACKATHON_NOTES.md) for the scope of the current
+improvements and outstanding Meta-model integration and submission work.
+
 Replace the demo-video placeholder, confirm the deployed build and required
-judge flows, and supply the repository URL. A private repository requires judge
-collaborator access or the submission platform's approved private-repository
-access mechanism; a URL alone does not grant access. No project licence is
-added or changed by this preparation.
+judge flows, and supply the repository URL. The Meta hackathon participant
+guide requires a public repository. Review the repository contents, visibility
+and licensing before publication, and verify that judges can open both the
+repository and video links.
