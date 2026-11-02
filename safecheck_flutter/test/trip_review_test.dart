@@ -266,7 +266,7 @@ void main() {
     await tester.pump();
 
     final preparing = find.ancestor(
-      of: find.text('Preparing trip…'),
+      of: find.text('Loading contacts…'),
       matching: find.byWidgetPredicate((widget) => widget is FilledButton),
     );
     expect(tester.widget<FilledButton>(preparing).onPressed, isNull);

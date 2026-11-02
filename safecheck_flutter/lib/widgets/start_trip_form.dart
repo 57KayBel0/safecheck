@@ -36,6 +36,8 @@ class StartTripForm extends StatefulWidget {
   State<StartTripForm> createState() => _StartTripFormState();
 }
 
+enum _StartTripPhase { idle, loadingContacts, reviewing, starting }
+
 class _StartTripFormState extends State<StartTripForm> {
   static const _presets = [15, 30, 60, 120, 240];
 
@@ -44,7 +46,17 @@ class _StartTripFormState extends State<StartTripForm> {
   final _customMinutes = TextEditingController();
   TripType _type = TripType.walking;
   int? _presetMinutes = 30;
-  bool _starting = false;
+  _StartTripPhase _phase = _StartTripPhase.idle;
+  bool get _busy => _phase != _StartTripPhase.idle;
+  bool get _working =>
+      _phase == _StartTripPhase.loadingContacts ||
+      _phase == _StartTripPhase.starting;
+  String get _buttonLabel => switch (_phase) {
+    _StartTripPhase.idle => 'Review trip',
+    _StartTripPhase.loadingContacts => 'Loading contacts…',
+    _StartTripPhase.reviewing => 'Review in progress',
+    _StartTripPhase.starting => 'Starting trip…',
+  };
   CheckInReminderMode _reminderMode = CheckInReminderMode.silent;
   LocationSharing _sharing = LocationSharing.off;
   String? _error;
@@ -59,9 +71,9 @@ class _StartTripFormState extends State<StartTripForm> {
   int? get _minutes => _presetMinutes ?? int.tryParse(_customMinutes.text);
 
   Future<void> _submit() async {
-    if (_starting || !_formKey.currentState!.validate()) return;
+    if (_busy || !_formKey.currentState!.validate()) return;
     setState(() {
-      _starting = true;
+      _phase = _StartTripPhase.loadingContacts;
       _error = null;
     });
     final type = _type;
@@ -82,6 +94,7 @@ class _StartTripFormState extends State<StartTripForm> {
         return;
       }
       final deadline = widget.serverNow().add(Duration(minutes: minutes));
+      setState(() => _phase = _StartTripPhase.reviewing);
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => TripReviewDialog(
@@ -95,12 +108,13 @@ class _StartTripFormState extends State<StartTripForm> {
         ),
       );
       if (!mounted || confirmed != true) return;
+      setState(() => _phase = _StartTripPhase.starting);
       await widget.onStart(type, description, minutes, reminderMode, sharing);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = friendlyError(e));
     } finally {
-      if (mounted) setState(() => _starting = false);
+      if (mounted) setState(() => _phase = _StartTripPhase.idle);
     }
   }
 
@@ -167,7 +181,7 @@ class _StartTripFormState extends State<StartTripForm> {
                   label: Text(tripTypeLabel(type)),
                   selected: _type == type,
                   showCheckmark: false,
-                  onSelected: _starting
+                  onSelected: _busy
                       ? null
                       : (_) => setState(() => _type = type),
                 ),
@@ -176,7 +190,7 @@ class _StartTripFormState extends State<StartTripForm> {
           const SizedBox(height: 20),
           TextFormField(
             controller: _description,
-            enabled: !_starting,
+            enabled: !_busy,
             decoration: const InputDecoration(
               labelText: 'Description',
               hintText: 'e.g. Taxi from Bree Street rank to Soweto',
@@ -200,14 +214,14 @@ class _StartTripFormState extends State<StartTripForm> {
                 ChoiceChip(
                   label: Text(formatDurationShort(m)),
                   selected: _presetMinutes == m,
-                  onSelected: _starting
+                  onSelected: _busy
                       ? null
                       : (_) => setState(() => _presetMinutes = m),
                 ),
               ChoiceChip(
                 label: const Text('Custom'),
                 selected: _presetMinutes == null,
-                onSelected: _starting
+                onSelected: _busy
                     ? null
                     : (_) => setState(() => _presetMinutes = null),
               ),
@@ -217,7 +231,7 @@ class _StartTripFormState extends State<StartTripForm> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _customMinutes,
-              enabled: !_starting,
+              enabled: !_busy,
               decoration: const InputDecoration(
                 labelText: 'Minutes',
                 helperText: 'Between 1 minute and 24 hours (1440 minutes)',
@@ -249,7 +263,7 @@ class _StartTripFormState extends State<StartTripForm> {
               ),
               DropdownMenuItem(value: LocationSharing.off, child: Text('Off')),
             ],
-            onChanged: _starting
+            onChanged: _busy
                 ? null
                 : (value) {
                     if (value != null) setState(() => _sharing = value);
@@ -278,7 +292,7 @@ class _StartTripFormState extends State<StartTripForm> {
           RadioGroup<CheckInReminderMode>(
             groupValue: _reminderMode,
             onChanged: (value) {
-              if (value != null && !_starting && reminderModeSupported(value)) {
+              if (value != null && !_busy && reminderModeSupported(value)) {
                 setState(() => _reminderMode = value);
               }
             },
@@ -289,7 +303,7 @@ class _StartTripFormState extends State<StartTripForm> {
                   title: const Text('Silent (default)'),
                   subtitle: const Text('In-app reminder only'),
                   value: CheckInReminderMode.silent,
-                  enabled: !_starting,
+                  enabled: !_busy,
                 ),
                 RadioListTile<CheckInReminderMode>(
                   contentPadding: EdgeInsets.zero,
@@ -301,7 +315,7 @@ class _StartTripFormState extends State<StartTripForm> {
                   subtitle: const Text('May attract attention'),
                   value: CheckInReminderMode.vibration,
                   enabled:
-                      !_starting &&
+                      !_busy &&
                       reminderModeSupported(CheckInReminderMode.vibration),
                 ),
                 RadioListTile<CheckInReminderMode>(
@@ -314,7 +328,7 @@ class _StartTripFormState extends State<StartTripForm> {
                   subtitle: const Text('May attract attention'),
                   value: CheckInReminderMode.sound,
                   enabled:
-                      !_starting &&
+                      !_busy &&
                       reminderModeSupported(CheckInReminderMode.sound),
                 ),
               ],
@@ -333,14 +347,14 @@ class _StartTripFormState extends State<StartTripForm> {
             const SizedBox(height: 16),
           ],
           FilledButton.icon(
-            onPressed: _starting || noContacts ? null : _submit,
-            icon: _starting
+            onPressed: _busy || noContacts ? null : _submit,
+            icon: _working
                 ? const SizedBox.square(
                     dimension: 22,
                     child: CircularProgressIndicator(strokeWidth: 3),
                   )
                 : const Icon(Icons.fact_check_outlined),
-            label: Text(_starting ? 'Preparing trip…' : 'Review trip'),
+            label: Text(_buttonLabel),
           ),
         ],
       ),

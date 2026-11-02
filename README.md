@@ -179,11 +179,11 @@ flutter test test/trip_review_test.dart
 flutter test test/trip_location_controller_test.dart test/trip_location_status_test.dart
 ```
 
-The development environment has intermittently blocked analysis or SDK cache
-access. A blocked check is not a pass. Recent source verification passed 25
-focused origin, mocked BulkSMS and tracking tests; the latest location widget
-fix still needs an external rerun. Android SMS link detection and browser
-permission behavior require device testing.
+GitHub Actions checks backend analysis, formatting and tests, plus Flutter
+analysis and widget tests. A blocked check is not a pass. Widget tests do not
+establish that the deployed build matches source or that real messages arrive.
+Android SMS link detection and browser permission behavior require device
+testing through the existing Serverpod MCP workflow.
 
 ## Known limitations and privacy
 

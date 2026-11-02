@@ -69,6 +69,12 @@ flutter test test/trip_review_test.dart
 flutter test
 ```
 
+Verified on 2 November 2026 with Flutter 3.44.4 / Dart 3.12.2: Flutter static
+analysis passed, changed Dart files passed formatting checks, all 14 focused
+review tests passed, and the full Flutter suite passed all 73 tests. The
+existing backend analysis, formatting and test workflows also passed on the
+initial PR revision; check the latest PR checks after further changes.
+
 Use the existing Serverpod MCP workflow for interactive app verification.
 Unit/widget tests do not establish production SMS delivery or background
 tracking behavior.
