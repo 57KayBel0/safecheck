@@ -79,8 +79,9 @@ class _Client extends Client {
           ],
           locationSharing: args['locationSharing'] as LocationSharing,
         );
-        if (loseStartReply)
+        if (loseStartReply) {
           throw StateError('Synthetic connection loss after commit');
+        }
         result = TripSnapshot(trip: activeTrip, serverTime: now);
       default:
         throw StateError('Unexpected RPC: $call');
