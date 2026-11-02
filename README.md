@@ -67,12 +67,13 @@ Change models/endpoints and let the existing workflow regenerate it.
 
 ## AI planning status
 
-A backend-only Meta Model API adapter and draft validator are implemented with
-mocked provider tests. They prepare a proposal or clarification questions and
-cannot start trips or send alerts. The authenticated endpoint, Flutter planning
-flow and live-provider verification are still pending. See
+A Meta Model API trip-planning flow connects the authenticated backend and Flutter
+app. Describe a trip, clarify missing details, then review and explicitly confirm
+the proposed exact deadline. Planning itself cannot start trips or send alerts.
+Private server credentials enable the AI option; manual setup remains available.
+Live provider verification is still outstanding. See
 [AI_PLANNER.md](safecheck_server/AI_PLANNER.md) for the service contract, private
-configuration and remaining integration steps.
+configuration and verification steps.
 
 ## Prerequisites and local setup
 

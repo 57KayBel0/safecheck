@@ -424,6 +424,35 @@ class EndpointContact extends _isc.EndpointRef {
   );
 }
 
+/// Prepares read-only trip drafts for signed-in users. Never starts a trip.
+/// {@category Endpoint}
+class EndpointPlanning extends _isc.EndpointRef {
+  EndpointPlanning(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'planning';
+
+  _ida.Future<bool> isAvailable() => caller.callServerEndpoint<bool>(
+    'planning',
+    'isAvailable',
+    {},
+  );
+
+  /// [history] alternates user text and the returned draft JSON, at most
+  /// three completed exchanges. It is context only, never an authority to act.
+  _ida.Future<String> propose(
+    String input,
+    List<String> history,
+  ) => caller.callServerEndpoint<String>(
+    'planning',
+    'propose',
+    {
+      'input': input,
+      'history': history,
+    },
+  );
+}
+
 /// Reads and updates the signed-in user's own profile.
 /// {@category Endpoint}
 class EndpointProfile extends _isc.EndpointRef {
@@ -520,6 +549,24 @@ class EndpointTrip extends _isc.EndpointRef {
     },
   );
 
+  /// Starts a reviewed plan at its approved absolute deadline. The server
+  /// revalidates the time at confirmation; it never shifts a stale draft.
+  _ida.Future<_iifp4bsx.TripSnapshot> startPlannedTrip(
+    _ietnx8jp.TripType tripType,
+    String description,
+    DateTime checkInAtUtc,
+    _igcyrgmn.LocationSharing locationSharing,
+  ) => caller.callServerEndpoint<_iifp4bsx.TripSnapshot>(
+    'trip',
+    'startPlannedTrip',
+    {
+      'tripType': tripType,
+      'description': description,
+      'checkInAtUtc': checkInAtUtc,
+      'locationSharing': locationSharing,
+    },
+  );
+
   /// Checks in safely on the caller's active trip [tripId].
   _ida.Future<_iifp4bsx.TripSnapshot> checkIn(int tripId) =>
       caller.callServerEndpoint<_iifp4bsx.TripSnapshot>(
@@ -589,6 +636,7 @@ class Client extends _isc.ServerpodClientShared {
     googleIdp = EndpointGoogleIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
     contact = EndpointContact(this);
+    planning = EndpointPlanning(this);
     profile = EndpointProfile(this);
     location = EndpointLocation(this);
     trip = EndpointTrip(this);
@@ -605,6 +653,8 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointContact contact;
 
+  late final EndpointPlanning planning;
+
   late final EndpointProfile profile;
 
   late final EndpointLocation location;
@@ -620,6 +670,7 @@ class Client extends _isc.ServerpodClientShared {
     'googleIdp': googleIdp,
     'jwtRefresh': jwtRefresh,
     'contact': contact,
+    'planning': planning,
     'profile': profile,
     'location': location,
     'trip': trip,

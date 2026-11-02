@@ -15,6 +15,7 @@ class TripReviewDialog extends StatelessWidget {
     required this.contacts,
     required this.locationSharing,
     required this.reminderMode,
+    this.exactDeadline = false,
   });
 
   final TripType tripType;
@@ -24,6 +25,7 @@ class TripReviewDialog extends StatelessWidget {
   final List<TrustedContact> contacts;
   final LocationSharing locationSharing;
   final CheckInReminderMode reminderMode;
+  final bool exactDeadline;
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +45,16 @@ class TripReviewDialog extends StatelessWidget {
             ),
             _ReviewDetail(
               icon: Icons.schedule,
-              label: 'Check in within ${formatDurationShort(durationMinutes)}',
-              value:
-                  'Around ${formatDateTime(context, estimatedDeadline)} '
-                  '(your local time). The countdown starts when you confirm; '
-                  'the server sets the exact deadline.',
+              label: exactDeadline
+                  ? 'Check-in deadline'
+                  : 'Check in within ${formatDurationShort(durationMinutes)}',
+              value: exactDeadline
+                  ? '${formatSastDateTime(context, estimatedDeadline)}. '
+                        'This exact time is kept when you confirm. '
+                        'If it becomes too close, choose a new time.'
+                  : 'Around ${formatDateTime(context, estimatedDeadline)} '
+                        '(your local time). The countdown starts when you confirm; '
+                        'the server sets the exact deadline.',
             ),
             _ReviewDetail(
               icon: locationSharing == LocationSharing.off

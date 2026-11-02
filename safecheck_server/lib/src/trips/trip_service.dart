@@ -34,6 +34,7 @@ abstract final class TripService {
     required TripType tripType,
     required String description,
     required int durationMinutes,
+    DateTime? exactDeadline,
     LocationSharing locationSharing = LocationSharing.off,
   }) async {
     final cleanDescription = cleanText(
@@ -79,6 +80,16 @@ abstract final class TripService {
       }
 
       final now = _now();
+      final deadline =
+          exactDeadline?.toUtc() ?? now.add(Duration(minutes: durationMinutes));
+      final remaining = deadline.difference(now);
+      if (remaining < const Duration(minutes: 1) ||
+          remaining > const Duration(hours: 24)) {
+        throw validationError(
+          'Choose a check-in time between one minute and 24 hours from now. '
+          'Your draft may have expired; review a new time.',
+        );
+      }
       final trip = await Trip.db.insertRow(
         session,
         Trip(
@@ -86,9 +97,13 @@ abstract final class TripService {
           activeOwnerId: ownerId,
           tripType: tripType,
           description: cleanDescription,
-          durationMinutes: durationMinutes,
+          durationMinutes: exactDeadline == null
+              ? durationMinutes
+              : (remaining.inMicroseconds /
+                        const Duration(minutes: 1).inMicroseconds)
+                    .ceil(),
           startedAt: now,
-          deadline: now.add(Duration(minutes: durationMinutes)),
+          deadline: deadline,
           status: TripStatus.active,
           contacts: [
             for (final c in contacts)
@@ -107,21 +122,17 @@ abstract final class TripService {
       );
 
       if (locationSharing != LocationSharing.off) {
-        await TrackingLink.db.insert(
-          session,
-          [
-            for (final c in trip.contacts)
-              TrackingLink(
-                token: generateToken(),
-                ownerId: ownerId,
-                tripId: trip.id!,
-                contactName: c.name,
-                contactPhone: c.phoneNumber,
-                createdAt: now,
-              ),
-          ],
-          transaction: transaction,
-        );
+        await TrackingLink.db.insert(session, [
+          for (final c in trip.contacts)
+            TrackingLink(
+              token: generateToken(),
+              ownerId: ownerId,
+              tripId: trip.id!,
+              contactName: c.name,
+              contactPhone: c.phoneNumber,
+              createdAt: now,
+            ),
+        ], transaction: transaction);
       }
       return trip;
     });
@@ -436,10 +447,7 @@ abstract final class TripService {
 }
 
 /// Builds the text of a SafeCheck alert message for SMS or WhatsApp.
-String alertMessageBody({
-  required String travellerName,
-  String? trackingUrl,
-}) {
+String alertMessageBody({required String travellerName, String? trackingUrl}) {
   final tracking = trackingUrl == null ? '' : '\nTrack:\n$trackingUrl';
   return 'SafeCheck: $travellerName missed check-in.$tracking';
 }

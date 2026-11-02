@@ -188,6 +188,8 @@ class TestEndpoints {
 
   late final _ContactEndpoint contact;
 
+  late final _PlanningEndpoint planning;
+
   late final _ProfileEndpoint profile;
 
   late final _LocationEndpoint location;
@@ -219,6 +221,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     contact = _ContactEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    planning = _PlanningEndpoint(
       endpoints,
       serializationManager,
     );
@@ -950,6 +956,80 @@ class _ContactEndpoint {
   }
 }
 
+class _PlanningEndpoint {
+  _PlanningEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<bool> isAvailable(_ist.TestSessionBuilder sessionBuilder) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'planning',
+            method: 'isAvailable',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'planning',
+          methodName: 'isAvailable',
+          parameters: _ist.testObjectToJson({}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<bool>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<String> propose(
+    _ist.TestSessionBuilder sessionBuilder,
+    String input,
+    List<String> history,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'planning',
+            method: 'propose',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'planning',
+          methodName: 'propose',
+          parameters: _ist.testObjectToJson({
+            'input': input,
+            'history': history,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<String>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
 class _ProfileEndpoint {
   _ProfileEndpoint(
     this._endpointDispatch,
@@ -1165,6 +1245,45 @@ class _TripEndpoint {
             'tripType': tripType,
             'description': description,
             'durationMinutes': durationMinutes,
+            'locationSharing': locationSharing,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ijcus4gd.TripSnapshot>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ijcus4gd.TripSnapshot> startPlannedTrip(
+    _ist.TestSessionBuilder sessionBuilder,
+    _iiisoczy.TripType tripType,
+    String description,
+    DateTime checkInAtUtc,
+    _imtqoqg8.LocationSharing locationSharing,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'trip',
+            method: 'startPlannedTrip',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'trip',
+          methodName: 'startPlannedTrip',
+          parameters: _ist.testObjectToJson({
+            'tripType': tripType,
+            'description': description,
+            'checkInAtUtc': checkInAtUtc,
             'locationSharing': locationSharing,
           }),
           serializationManager: _serializationManager,

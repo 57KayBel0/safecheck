@@ -90,7 +90,7 @@ class MetaTripPlanner {
     List<PlanningTurn> history = const [],
   }) async {
     final text = input.trim();
-    _validateInput(text, history);
+    validateInput(text, history);
     if (!isConfigured) {
       throw const TripPlanningException(
         PlanningFailure.notConfigured,
@@ -235,7 +235,7 @@ class MetaTripPlanner {
     }
   }
 
-  static void _validateInput(String input, List<PlanningTurn> history) {
+  static void validateInput(String input, List<PlanningTurn> history) {
     var invalid =
         input.isEmpty ||
         input.length > maxInputCharacters ||

@@ -20,25 +20,31 @@ New work in this iteration:
 - Regression tests for the review/confirmation boundary, loading failures,
   privacy defaults, draft preservation and narrow-screen accessibility.
 - A Flutter CI job that analyzes the frontend and runs its widget tests.
-- A backend-only Meta AI adapter using a strict draft schema, server time
-  context, bounded requests, safe provider errors and validated draft times.
-  Provider behavior is mocked in tests; app wiring and a live call are pending.
+- A Meta AI trip-planning workflow in Flutter and an authenticated endpoint:
+  describe a trip, clarify missing information, revise, review and confirm.
+  The adapter uses a strict schema, server UTC/SAST context, bounded requests
+  and safe provider errors. Live model interpretation still needs verification.
+- Durable per-owner AI request quotas, including concurrent reservations.
+- A separate confirmation endpoint that preserves the approved exact deadline
+  and rejects stale drafts against the current server clock.
+- AI/privacy information in the app and the draft privacy policy; manual setup
+  remains available when the provider or its configuration is unavailable.
 
-The estimated review time follows the server-adjusted clock, but the existing
-API starts a duration-based countdown at confirmation. The exact deadline is
-the deadline returned by the server. Contacts are re-read by the backend at
-start; review does not lock them against concurrent edits on another device.
+Manual setup starts a duration-based countdown at confirmation. AI planning
+instead preserves the absolute time approved in review, displayed in SAST.
+The server response remains authoritative. Contacts are re-read by the backend
+at start; review does not lock them against concurrent edits on another device.
 
 ## Required before a Meta hackathon submission
 
-- Complete and verify the Meta AI planning workflow. **The adapter is not yet
-  connected to the app, and no live Meta request has been verified. The current
-  changes alone do not establish a working Meta feature for the submission.**
-- Have the model ask about ambiguous or missing trip details and produce a
-  validated draft. Keep API credentials on the backend. Reuse the review
-  step and require confirmation before creating a trip or scheduling alerts.
-- Follow `AGENTS.md` for endpoint/model generation and app verification through
-  Serverpod MCP. Do not hand-edit generated clients or server registration.
+- Verify a real Meta request and its interpretation using fictional trip data.
+  **Mocked tests do not establish live Meta access or interpretation quality.**
+  Show a clarification, review and confirmed exact deadline in the live app.
+- Keep API credentials private on the backend. Apply the generated quota
+  migration and verify the deployed build before recording the submission.
+- Generated server/client/test-tool changes must come from Serverpod. The owner
+  authorized CLI generation and an isolated demo server for this task because
+  the Serverpod MCP is unavailable; generated files are not hand-edited.
 - Clearly identify work built during the event, and check the rules governing
   reuse of an existing indie project before presenting the earlier prototype.
 - Make the submission repository public as required by the participant guide,
@@ -55,7 +61,15 @@ confirmed trip with its server deadline. Demonstrate location off by default
 and an explicit sharing choice. Show an actual message status in Alerts after
 a missed check-in, distinguishing a simulation from a provider submission.
 For the AI portion, demonstrate a real Meta request, a clarification and a
-user-reviewed draft once that integration is implemented.
+user-reviewed draft. Present simulated messages with their actual status.
+
+The organizer's 28 October reply confirms pivots are allowed without updating
+the application or notifying anyone. It does not resolve reuse rules for an
+existing indie prototype. The participant guide explicitly describes reuse for
+startups; confirm the indie case before presenting earlier work. Use the
+Build for Your World theme and the Indie track if applying as a solo builder.
+Submit one public repository, accessible live product and new three-minute demo
+by 4 November 2026 at 21:00 ET (5 November at 04:00 SAST).
 
 Ask three to five people to try setup and contact review. Record completion
 time, errors and confusing steps, then report actual observations. Previous
@@ -78,6 +92,6 @@ review tests passed, and the full Flutter suite passed all 73 tests. The
 existing backend analysis, formatting and test workflows also passed on the
 initial PR revision; check the latest PR checks after further changes.
 
-Use the existing Serverpod MCP workflow for interactive app verification.
-Unit/widget tests do not establish production SMS delivery or background
+The final integration's verification is recorded in the pull request. Unit/widget
+tests do not establish live model quality, production SMS delivery or background
 tracking behavior.

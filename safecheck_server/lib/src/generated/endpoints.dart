@@ -27,6 +27,7 @@ import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/google_idp_endpoint.dart' as _i71axiz0;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
 import '../contacts/contact_endpoint.dart' as _i468fl3m;
+import '../planning/planning_endpoint.dart' as _i1oqgc9d;
 import '../profile/profile_endpoint.dart' as _i6ky944g;
 import '../tracking/location_endpoint.dart' as _ia0shpgd;
 import '../trips/trip_endpoint.dart' as _iwmjb5fq;
@@ -64,6 +65,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'contact',
+          null,
+        ),
+      'planning': _i1oqgc9d.PlanningEndpoint()
+        ..initialize(
+          server,
+          'planning',
           null,
         ),
       'profile': _i6ky944g.ProfileEndpoint()
@@ -521,6 +528,47 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
+    connectors['planning'] = _is.EndpointConnector(
+      name: 'planning',
+      endpoint: endpoints['planning']!,
+      methodConnectors: {
+        'isAvailable': _is.MethodConnector(
+          name: 'isAvailable',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['planning'] as _i1oqgc9d.PlanningEndpoint)
+                  .isAvailable(session),
+        ),
+        'propose': _is.MethodConnector(
+          name: 'propose',
+          params: {
+            'input': _is.ParameterDescription(
+              name: 'input',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'history': _is.ParameterDescription(
+              name: 'history',
+              type: _is.getType<List<String>>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['planning'] as _i1oqgc9d.PlanningEndpoint).propose(
+                    session,
+                    params['input'],
+                    params['history'],
+                  ),
+        ),
+      },
+    );
     connectors['profile'] = _is.EndpointConnector(
       name: 'profile',
       endpoint: endpoints['profile']!,
@@ -660,6 +708,43 @@ class Endpoints extends _is.EndpointDispatch {
                     params['tripType'],
                     params['description'],
                     params['durationMinutes'],
+                    params['locationSharing'],
+                  ),
+        ),
+        'startPlannedTrip': _is.MethodConnector(
+          name: 'startPlannedTrip',
+          params: {
+            'tripType': _is.ParameterDescription(
+              name: 'tripType',
+              type: _is.getType<_iiisoczy.TripType>(),
+              nullable: false,
+            ),
+            'description': _is.ParameterDescription(
+              name: 'description',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'checkInAtUtc': _is.ParameterDescription(
+              name: 'checkInAtUtc',
+              type: _is.getType<DateTime>(),
+              nullable: false,
+            ),
+            'locationSharing': _is.ParameterDescription(
+              name: 'locationSharing',
+              type: _is.getType<_imtqoqg8.LocationSharing>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['trip'] as _iwmjb5fq.TripEndpoint)
+                  .startPlannedTrip(
+                    session,
+                    params['tripType'],
+                    params['description'],
+                    params['checkInAtUtc'],
                     params['locationSharing'],
                   ),
         ),

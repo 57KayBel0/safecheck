@@ -257,6 +257,9 @@ class Protocol extends _isc.SerializationManager {
               .toList()
           as T;
     }
+    if (t == List<String>) {
+      return (data as List).map((e) => deserialize<String>(e)).toList() as T;
+    }
     if (t == List<_if9xc140.LocationPoint>) {
       return (data as List)
               .map((e) => deserialize<_if9xc140.LocationPoint>(e))

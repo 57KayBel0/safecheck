@@ -23,6 +23,9 @@ contact:
   - update:
   - getInvite:
   - remove:
+planning:
+  - isAvailable:
+  - propose:
 profile:
   - getProfile:
   - saveProfile:
@@ -32,6 +35,7 @@ location:
 trip:
   - getActiveTrip:
   - startTrip:
+  - startPlannedTrip:
   - checkIn:
   - history:
   - getTrackingLinks:

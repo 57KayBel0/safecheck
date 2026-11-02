@@ -40,6 +40,7 @@ import 'future_calls_generated_models/trip_deadline_future_call_process_deadline
     as _ih51nflp;
 import 'messaging/message_channel.dart' as _i9p5tz3d;
 import 'messaging/message_status.dart' as _i5yj6jmy;
+import 'planning/planning_quota.dart' as _id4akxn0;
 import 'profile/user_profile.dart' as _ik2xsncp;
 import 'tracking/location_point.dart' as _irmr9nnk;
 import 'tracking/location_sharing.dart' as _idx5cm0c;
@@ -59,6 +60,7 @@ export 'contacts/contact_opt_in_status.dart';
 export 'contacts/trusted_contact.dart';
 export 'messaging/message_channel.dart';
 export 'messaging/message_status.dart';
+export 'planning/planning_quota.dart';
 export 'profile/user_profile.dart';
 export 'tracking/location_point.dart';
 export 'tracking/location_sharing.dart';
@@ -79,6 +81,68 @@ class Protocol extends _is.DatabaseSerializationManager {
   static final Protocol _instance = Protocol._().._registerHostProtocols();
 
   static List<_isp.TableDefinition> get targetTableDefinitions => [
+    _isp.TableDefinition(
+      name: 'planning_quota',
+      dartName: 'PlanningQuota',
+      schema: 'public',
+      module: 'safecheck',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ownerId',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'windowStartedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'windowCount',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'dayStartedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'dayCount',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'planning_quota_owner_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'ownerId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
     _isp.TableDefinition(
       name: 'safety_alert',
       dartName: 'SafetyAlert',
@@ -849,6 +913,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _i5yj6jmy.MessageStatus) {
       return _i5yj6jmy.MessageStatus.fromJson(data) as T;
     }
+    if (t == _id4akxn0.PlanningQuota) {
+      return _id4akxn0.PlanningQuota.fromJson(data) as T;
+    }
     if (t == _ik2xsncp.UserProfile) {
       return _ik2xsncp.UserProfile.fromJson(data) as T;
     }
@@ -921,6 +988,10 @@ class Protocol extends _is.DatabaseSerializationManager {
       return (data != null ? _i5yj6jmy.MessageStatus.fromJson(data) : null)
           as T;
     }
+    if (t == _is.getType<_id4akxn0.PlanningQuota?>()) {
+      return (data != null ? _id4akxn0.PlanningQuota.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_ik2xsncp.UserProfile?>()) {
       return (data != null ? _ik2xsncp.UserProfile.fromJson(data) : null) as T;
     }
@@ -988,6 +1059,9 @@ class Protocol extends _is.DatabaseSerializationManager {
               .toList()
           as T;
     }
+    if (t == List<String>) {
+      return (data as List).map((e) => deserialize<String>(e)).toList() as T;
+    }
     if (t == List<_inw09ail.LocationPoint>) {
       return (data as List)
               .map((e) => deserialize<_inw09ail.LocationPoint>(e))
@@ -1034,6 +1108,7 @@ class Protocol extends _is.DatabaseSerializationManager {
         'TripDeadlineFutureCallProcessDeadlineModel',
       _i9p5tz3d.MessageChannel => 'MessageChannel',
       _i5yj6jmy.MessageStatus => 'MessageStatus',
+      _id4akxn0.PlanningQuota => 'PlanningQuota',
       _ik2xsncp.UserProfile => 'UserProfile',
       _irmr9nnk.LocationPoint => 'LocationPoint',
       _idx5cm0c.LocationSharing => 'LocationSharing',
@@ -1077,6 +1152,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'MessageChannel';
       case _i5yj6jmy.MessageStatus():
         return 'MessageStatus';
+      case _id4akxn0.PlanningQuota():
+        return 'PlanningQuota';
       case _ik2xsncp.UserProfile():
         return 'UserProfile';
       case _irmr9nnk.LocationPoint():
@@ -1153,6 +1230,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'MessageStatus') {
       return deserialize<_i5yj6jmy.MessageStatus>(data['data']);
+    }
+    if (dataClassName == 'PlanningQuota') {
+      return deserialize<_id4akxn0.PlanningQuota>(data['data']);
     }
     if (dataClassName == 'UserProfile') {
       return deserialize<_ik2xsncp.UserProfile>(data['data']);
@@ -1234,6 +1314,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return _i79al053.SafetyAlert.t;
       case _ixhyrlmy.TrustedContact:
         return _ixhyrlmy.TrustedContact.t;
+      case _id4akxn0.PlanningQuota:
+        return _id4akxn0.PlanningQuota.t;
       case _ik2xsncp.UserProfile:
         return _ik2xsncp.UserProfile.t;
       case _idf2vf11.TrackingLink:

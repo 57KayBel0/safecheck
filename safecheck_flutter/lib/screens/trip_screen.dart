@@ -17,6 +17,7 @@ import '../util/format.dart';
 import '../widgets/state_views.dart';
 import '../widgets/start_trip_form.dart';
 import '../widgets/trip_completion_notice.dart';
+import '../widgets/ai_trip_form.dart';
 
 /// Home tab: start a trip, or follow the active trip and check in.
 class TripScreen extends StatefulWidget {
@@ -46,6 +47,9 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
   /// Server clock minus device clock, so the countdown follows the server.
   Duration _clockOffset = Duration.zero;
   List<TrustedContact> _contacts = const [];
+  bool _aiAvailable = false;
+  bool _useAiPlanner = true;
+  bool _setupBusy = false;
 
   bool _checkingIn = false;
   CheckInReminderMode _reminderMode = CheckInReminderMode.silent;
@@ -107,6 +111,10 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
       final results = await Future.wait([
         client.trip.getActiveTrip(),
         client.contact.list(),
+        client.planning
+            .isAvailable()
+            .timeout(const Duration(seconds: 5), onTimeout: () => false)
+            .catchError((_) => false),
       ]);
       final snapshot = results[0] as TripSnapshot;
       final contacts = results[1] as List<TrustedContact>;
@@ -127,6 +135,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
           _reminderGate.cancel(previous!.id!);
         }
         _contacts = contacts;
+        _aiAvailable = results[2] as bool;
         if (ended != null) _endedTrip = ended;
         _loading = false;
         _loadError = null;
@@ -200,12 +209,36 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     CheckInReminderMode reminderMode,
     LocationSharing sharing,
   ) async {
-    final snapshot = await client.trip.startTrip(
-      type,
-      description,
-      minutes,
-      sharing,
+    await _startConfirmedTrip(
+      () => client.trip.startTrip(type, description, minutes, sharing),
+      reminderMode,
     );
+  }
+
+  Future<void> _startPlannedTrip(
+    TripType type,
+    String description,
+    DateTime deadline,
+    CheckInReminderMode reminderMode,
+    LocationSharing sharing,
+  ) => _startConfirmedTrip(
+    () => client.trip.startPlannedTrip(type, description, deadline, sharing),
+    reminderMode,
+  );
+
+  Future<void> _startConfirmedTrip(
+    Future<TripSnapshot> Function() start,
+    CheckInReminderMode reminderMode,
+  ) async {
+    final TripSnapshot snapshot;
+    try {
+      snapshot = await start();
+    } catch (_) {
+      // A connection loss may happen after the server commits a start. Refresh
+      // before offering another start; never automatically retry the mutation.
+      await _load(silent: true);
+      rethrow;
+    }
     if (!mounted) return;
     setState(() {
       _clockOffset = snapshot.serverTime.difference(DateTime.now().toUtc());
@@ -213,6 +246,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
       _reminderMode = reminderMode;
       _endedTrip = null;
       _lastDeadlineRefresh = null;
+      _setupBusy = false;
     });
     _syncTicker();
     _evaluateReminder();
@@ -317,14 +351,57 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                           _serverNow.isBefore(_trip!.deadline),
                       onCheckIn: _checkIn,
                     )
-                  else
-                    StartTripForm(
-                      contacts: _contacts,
-                      loadContacts: () => client.contact.list(),
-                      serverNow: () => _serverNow,
-                      onOpenContacts: widget.onOpenContacts,
-                      onStart: _startTrip,
-                    ),
+                  else ...[
+                    if (_aiAvailable) ...[
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(
+                            value: true,
+                            label: Text('Describe with AI'),
+                            icon: Icon(Icons.auto_awesome_outlined),
+                          ),
+                          ButtonSegment(
+                            value: false,
+                            label: Text('Manual'),
+                            icon: Icon(Icons.edit_outlined),
+                          ),
+                        ],
+                        selected: {_useAiPlanner},
+                        onSelectionChanged: _setupBusy
+                            ? null
+                            : (v) => setState(() => _useAiPlanner = v.single),
+                      ),
+                      const SizedBox(height: 20),
+                    ] else ...[
+                      const Text(
+                        'AI planning is unavailable. Manual trip setup still works.',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (_aiAvailable && _useAiPlanner)
+                      AiTripForm(
+                        propose: (input, history) =>
+                            client.planning.propose(input, history),
+                        loadContacts: () => client.contact.list(),
+                        serverNow: () => _serverNow,
+                        onOpenContacts: widget.onOpenContacts,
+                        onUseManual: () =>
+                            setState(() => _useAiPlanner = false),
+                        onBusyChanged: (busy) =>
+                            setState(() => _setupBusy = busy),
+                        onStart: _startPlannedTrip,
+                      )
+                    else
+                      StartTripForm(
+                        contacts: _contacts,
+                        loadContacts: () => client.contact.list(),
+                        serverNow: () => _serverNow,
+                        onOpenContacts: widget.onOpenContacts,
+                        onStart: _startTrip,
+                        onBusyChanged: (busy) =>
+                            setState(() => _setupBusy = busy),
+                      ),
+                  ],
                 ],
               ),
             ),

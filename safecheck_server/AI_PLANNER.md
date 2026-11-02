@@ -1,79 +1,84 @@
-# Meta AI trip planning: service and integration status
+# Meta AI trip planning
 
-`lib/src/planning/meta_trip_planner.dart` is a backend-only adapter for
-Meta Model API. It calls `muse-spark-1.3` at
-`https://api.meta.ai/v1/chat/completions` using a strict JSON schema.
-`trip_plan_draft.dart` validates the resulting proposal.
+The Flutter trip tab now offers **Describe with AI** when server credentials
+are configured. The authenticated `planning.propose` endpoint calls
+`muse-spark-1.3` at `https://api.meta.ai/v1/chat/completions` with a strict
+JSON schema. Missing details are presented as clarification questions.
+The user can revise the proposal, review it with current contacts, and explicitly
+confirm before `trip.startPlannedTrip` creates a trip.
 
-**The service is not yet connected to an authenticated endpoint or the Flutter
-app. No live Meta call has been verified. Adding a key alone does not enable
-an AI planning feature.**
+**The live Meta provider call still needs verification with the owner's private
+server key. Mocked tests verify the application contract and failure handling;
+they do not establish live interpretation quality.**
 
-## Service behavior
+## Behavior and boundaries
 
-- Inputs are trip text, bounded user/assistant history and a server-owned clock.
-  The app's profile, contact list and recorded GPS points are not automatically
-  included. Personal information typed into the conversation would be sent.
-- Requests include UTC and SAST time context. The model is instructed to ask
-  about missing or ambiguous information, including AM/PM and future departure.
-  Actual model interpretation still needs a live evaluation and user review.
-- Responses contain `tripType`, `description`, `checkInAtUtc` and `questions`.
-  Unknown details remain null and require clarification. Unknown fields and
-  malformed responses are rejected. Unsupported time bounds produce a question.
-- Readiness means **ready for review**, never permission to start a trip.
-  A draft cannot access a database, scheduler or message sender.
-- Request size, history, response size, output tokens and wait time are bounded.
-  The adapter makes no automatic retries. This is not a per-user or daily spend
-  cap; the authenticated endpoint still needs request quotas before exposure.
-- Provider errors are mapped to safe messages. API keys, raw provider errors
-  and trip text are not included in exception messages or logged by the adapter.
+- Inputs contain trip text, bounded alternating conversation history and
+  server-owned UTC/SAST time context. Profile, contact and GPS records are not
+  added. Personal information typed into the conversation would be sent.
+- The model is instructed to clarify missing or ambiguous details, including
+  AM/PM and future departure. SafeCheck currently starts trips immediately on
+  confirmation, rather than scheduling future departures.
+- Responses contain only `tripType`, `description`, `checkInAtUtc` and
+  `questions`. Unknown fields, malformed output and unsupported values fail
+  validation. An out-of-bounds time requires clarification.
+- Planning requires login and derives the owner from the authenticated session.
+  It cannot start trips, schedule deadlines, record location or send messages.
+- Durable per-owner quotas allow 5 attempts per 10-minute window and 30 per
+  UTC day. An advisory transaction lock prevents concurrent requests bypassing
+  the limit. Failed provider attempts count too. Unconfigured and invalid-input
+  requests do not reserve quota. These are request limits, not a global money cap.
+- Inputs are limited to 1500 characters per turn, 6 prior turns and 6000 total
+  characters. Responses are capped at 64 KiB and 2048 completion tokens. The
+  provider request times out after 30 seconds and is never automatically retried.
+- Conversation history lives in widget memory. The planning service does not
+  persist prompts or responses. Provider errors are redacted; no raw provider
+  body, API key or trip text appears in the adapter's errors or logs.
+- A complete draft is only ready for review. Location defaults to off and
+  reminders to silent. Contacts are refreshed before review and read again at
+  start. Another device can still change contacts between those operations.
+- Confirmation preserves the reviewed absolute deadline, including seconds.
+  The server rechecks it against its current clock inside the start transaction:
+  at least one minute and no more than 24 hours must remain. An expired draft is
+  rejected rather than shifted forward. Existing ownership, contact snapshots,
+  one-active-trip and persistent deadline/alert behavior still apply.
+- Pending user edits disable review; a failed change request invalidates the
+  previous draft. A failed start is reconciled with the active-trip endpoint;
+  mutations are never automatically retried.
+- Manual setup remains available with no key or provider access. Once a trip
+  starts, deterministic deadlines and alert processing need no further AI call.
 
-## Server-only configuration for the eventual endpoint
+## Private server configuration
 
-Use the existing private Serverpod password configuration or the server's
-`MODEL_API_KEY` environment variable. A constructor wiring example is:
+Set `metaModelApiKey` in the appropriate environment of the existing private
+`config/passwords.yaml`, or provide `MODEL_API_KEY` to the server process.
+The resolver uses `session.serverpod.getPassword('metaModelApiKey')` first,
+then the environment variable. Restart the server after configuration, and
+refresh the Trip tab. Keep the key out of Flutter, source control, recordings
+and chat messages.
 
-```dart
-final planner = MetaTripPlanner(
-  apiKey: pod.getPassword('metaModelApiKey') ??
-      Platform.environment['MODEL_API_KEY'],
-);
-```
-
-This example is not installed in `server.dart` yet. Keep the key on the server;
-do not place it in Flutter, source control, a demo recording or chat messages.
-Mocked tests use a fake key and a fake transport, and incur no model usage.
-
-## Remaining app integration
-
-1. Connect the project's Serverpod MCP, as required by `AGENTS.md`, and use
-   its generation/restart workflow. Do not hand-edit generated clients.
-2. Add a login-required planning endpoint that derives the owner from the
-   authenticated session, enforces per-user quotas and invokes the service.
-3. Present clarifications in Flutter, then populate the shared review dialog.
-   Contacts and location settings remain explicit app choices.
-4. Add a confirmation operation that revalidates the proposed time and fields
-   against the current server clock and the authenticated user's state. Preserve
-   the proposed exact deadline; the existing duration-only start API must not
-   silently move it forward by starting the original full interval again.
-5. Generate and test the endpoint/client changes through the supported workflow.
-   Verify a real Meta request with fictional trip data and inspect failure cases.
-6. Update the user-facing AI/privacy information before exposing this workflow.
-   Keep manual trip setup available when planning is unavailable.
-
-The existing deterministic deadline/alert path must continue working without
-an AI call after the user confirms a trip.
+The owner's permission for this task allows CLI generation and an isolated local
+demo server because the repository's Serverpod MCP is unavailable. Generated
+server/client/test-tool files are produced by Serverpod CLI 4.0.3, not hand-edited.
+The new `planning_quota` migration must be applied before exposing the endpoint.
+Do not modify production credentials or enable live SMS as part of verification.
 
 ## Verification
 
 ```sh
-dart test test/meta_trip_planner_test.dart test/planner_protocol_test.dart
+serverpod generate
+serverpod create-migration
+dart analyze --fatal-infos
+dart test test/meta_trip_planner_test.dart test/planner_protocol_test.dart test/integration/planning_test.dart
+cd ../safecheck_flutter
+flutter test test/ai_trip_form_test.dart test/trip_review_test.dart
 ```
 
-The tests cover the provider request, SAST date boundaries, response validation,
-unsupported times, history/input bounds, credential errors, timeouts and error
-redaction. The protocol test guards against drift in supported trip types.
-They do not measure the live model's interpretation quality.
+For a live check, use fictional trip data, clarify a missing time, confirm the
+SAST interpretation, edit/dismiss the review, then confirm and check in. Inspect
+the actual configured messaging mode; simulated messages are not sent. Also
+verify manual setup after removing provider availability. Do not use model
+quality claims or timing measurements from mocked responses in the submission.
 
 Primary API references:
 
