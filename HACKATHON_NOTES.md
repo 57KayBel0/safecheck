@@ -42,9 +42,8 @@ at start; review does not lock them against concurrent edits on another device.
   Show a clarification, review and confirmed exact deadline in the live app.
 - Keep API credentials private on the backend. Apply the generated quota
   migration and verify the deployed build before recording the submission.
-- Generated server/client/test-tool changes must come from Serverpod. The owner
-  authorized CLI generation and an isolated demo server for this task because
-  the Serverpod MCP is unavailable; generated files are not hand-edited.
+- Generate server/client/test-tool changes with Serverpod; generated files are
+  not hand-edited. This integration was generated with Serverpod CLI 4.0.3.
 - Clearly identify work built during the event, and check the rules governing
   reuse of an existing indie project before presenting the earlier prototype.
 - Make the submission repository public as required by the participant guide,
@@ -86,12 +85,14 @@ flutter test test/trip_review_test.dart
 flutter test
 ```
 
-Verified on 2 November 2026 with Flutter 3.44.4 / Dart 3.12.2: Flutter static
-analysis passed, changed Dart files passed formatting checks, all 14 focused
-review tests passed, and the full Flutter suite passed all 73 tests. The
-existing backend analysis, formatting and test workflows also passed on the
-initial PR revision; check the latest PR checks after further changes.
+Verification on 2 November 2026 uses Flutter 3.44.4 / Dart 3.12.2. The first
+integration revision passed all four CI workflows, including all 113 backend
+tests against embedded PostgreSQL. The Flutter suite covers AI/manual review,
+generated-client wiring, lost-start-reply reconciliation and narrow screens with
+enlarged text. A release web build also succeeded. See the integration pull
+request for results at its latest revision.
 
-The final integration's verification is recorded in the pull request. Unit/widget
-tests do not establish live model quality, production SMS delivery or background
-tracking behavior.
+Local database verification cannot initialize PostgreSQL under this execution
+environment's root-only process restrictions; CI runs those checks as a normal
+user. Unit/widget tests do not establish live model quality, production SMS
+delivery or background tracking behavior.

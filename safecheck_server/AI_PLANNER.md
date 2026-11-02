@@ -57,9 +57,8 @@ then the environment variable. Restart the server after configuration, and
 refresh the Trip tab. Keep the key out of Flutter, source control, recordings
 and chat messages.
 
-The owner's permission for this task allows CLI generation and an isolated local
-demo server because the repository's Serverpod MCP is unavailable. Generated
-server/client/test-tool files are produced by Serverpod CLI 4.0.3, not hand-edited.
+Generated server/client/test-tool files are produced by Serverpod CLI 4.0.3,
+not hand-edited. Use the repository's Serverpod workflow for future regeneration.
 The new `planning_quota` migration must be applied before exposing the endpoint.
 Do not modify production credentials or enable live SMS as part of verification.
 

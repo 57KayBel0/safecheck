@@ -255,6 +255,7 @@ class _StartTripFormState extends State<StartTripForm> {
           ],
           const SizedBox(height: 20),
           DropdownButtonFormField<LocationSharing>(
+            isExpanded: true,
             initialValue: _sharing,
             decoration: const InputDecoration(labelText: 'Location sharing'),
             items: const [
