@@ -65,6 +65,15 @@ trip/alert invariants. BulkSMS integration runs on the server, never in Flutter.
 Generated server code in `lib/src/generated/` is also maintained by Serverpod.
 Change models/endpoints and let the existing workflow regenerate it.
 
+## AI planning status
+
+A backend-only Meta Model API adapter and draft validator are implemented with
+mocked provider tests. They prepare a proposal or clarification questions and
+cannot start trips or send alerts. The authenticated endpoint, Flutter planning
+flow and live-provider verification are still pending. See
+[AI_PLANNER.md](safecheck_server/AI_PLANNER.md) for the service contract, private
+configuration and remaining integration steps.
+
 ## Prerequisites and local setup
 
 - Git, a Flutter SDK satisfying `^3.44.4`, and its Dart SDK satisfying `^3.12.2`.
@@ -168,6 +177,7 @@ Backend tests use Serverpod's managed test database, not Docker:
 Set-Location safecheck_server
 dart test
 dart test test/public_links_test.dart test/bulk_sms_message_sender_test.dart test/integration/tracking_test.dart
+dart test test/meta_trip_planner_test.dart test/planner_protocol_test.dart
 ```
 
 Flutter tests:

@@ -20,6 +20,9 @@ New work in this iteration:
 - Regression tests for the review/confirmation boundary, loading failures,
   privacy defaults, draft preservation and narrow-screen accessibility.
 - A Flutter CI job that analyzes the frontend and runs its widget tests.
+- A backend-only Meta AI adapter using a strict draft schema, server time
+  context, bounded requests, safe provider errors and validated draft times.
+  Provider behavior is mocked in tests; app wiring and a live call are pending.
 
 The estimated review time follows the server-adjusted clock, but the existing
 API starts a duration-based countdown at confirmation. The exact deadline is
@@ -28,9 +31,9 @@ start; review does not lock them against concurrent edits on another device.
 
 ## Required before a Meta hackathon submission
 
-- Implement and verify the Meta AI planning workflow. **This iteration does
-  not add a Meta API integration, and these UI changes alone do not satisfy
-  the event's Meta-model requirement.**
+- Complete and verify the Meta AI planning workflow. **The adapter is not yet
+  connected to the app, and no live Meta request has been verified. The current
+  changes alone do not establish a working Meta feature for the submission.**
 - Have the model ask about ambiguous or missing trip details and produce a
   validated draft. Keep API credentials on the backend. Reuse the review
   step and require confirmation before creating a trip or scheduling alerts.
