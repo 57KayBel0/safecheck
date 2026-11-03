@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'package:serverpod/serverpod.dart';
+import '../companion/incident_service.dart';
+import '../companion/companion_ai.dart';
+import '../companion/safety_plan_service.dart';
 
 import '../common/links.dart';
 import '../common/owner_lock.dart';
@@ -35,6 +39,12 @@ abstract final class TripService {
     required String description,
     required int durationMinutes,
     DateTime? exactDeadline,
+    List<int>? contactIds,
+    int graceMinutes = 0,
+    String? safetyPlanJson,
+    bool companionMode = false,
+    bool useAiIncidentSummary = false,
+    bool allowContactResolution = false,
     LocationSharing locationSharing = LocationSharing.off,
   }) async {
     final cleanDescription = cleanText(
@@ -43,6 +53,22 @@ abstract final class TripService {
       maxLength: maxDescriptionLength,
     );
     validateDuration(durationMinutes);
+    SafetyPlanService.validateGrace(graceMinutes);
+    String? reviewedPlan;
+    if (companionMode) {
+      try {
+        if (safetyPlanJson != null && safetyPlanJson.length > 4096) {
+          throw const FormatException();
+        }
+        reviewedPlan = jsonEncode(
+          safetyPlanJson == null
+              ? standardPlan()
+              : validateSafetyPlan(jsonDecode(safetyPlanJson)),
+        );
+      } catch (_) {
+        throw validationError('Review a valid safety plan before starting.');
+      }
+    }
 
     // A previous trip whose deadline already passed must be closed (and its
     // alert raised) before the user can start a new one.
@@ -60,12 +86,24 @@ abstract final class TripService {
         throw validationError('Set up your profile before starting a trip.');
       }
 
-      final contacts = await TrustedContact.db.find(
+      var contacts = await TrustedContact.db.find(
         session,
         where: (t) => t.ownerId.equals(ownerId),
         orderBy: (t) => t.id,
         transaction: transaction,
       );
+      if (contactIds != null) {
+        final ids = contactIds.toSet();
+        if (ids.isEmpty ||
+            ids.length != contactIds.length ||
+            ids.length > 5 ||
+            !ids.every((id) => contacts.any((c) => c.id == id))) {
+          throw validationError(
+            'Select current trusted contacts from your own account.',
+          );
+        }
+        contacts = contacts.where((c) => ids.contains(c.id)).toList();
+      }
       if (contacts.isEmpty) {
         throw validationError(
           'Add at least one trusted contact before starting a trip.',
@@ -105,10 +143,20 @@ abstract final class TripService {
           startedAt: now,
           deadline: deadline,
           status: TripStatus.active,
+          companionMode: companionMode,
+          graceMinutes: graceMinutes,
+          alertAt: graceMinutes == 0
+              ? null
+              : deadline.add(Duration(minutes: graceMinutes)),
+          safetyPlanJson: reviewedPlan,
+          useAiIncidentSummary: companionMode && useAiIncidentSummary,
           contacts: [
             for (final c in contacts)
               ContactSnapshot(
                 name: c.name,
+                canResolveIncident:
+                    allowContactResolution &&
+                    c.optInStatus == ContactOptInStatus.accepted,
                 phoneNumber: c.phoneNumber,
                 relationship: c.relationship,
                 optedIn: c.optInStatus == ContactOptInStatus.accepted,
@@ -161,7 +209,7 @@ abstract final class TripService {
           t.id.equals(tripId) &
           t.ownerId.equals(ownerId) &
           t.status.equals(TripStatus.active) &
-          (t.deadline > now),
+          ((t.alertAt > now) | (t.alertAt.equals(null) & (t.deadline > now))),
     );
 
     if (updated.isNotEmpty) {
@@ -213,10 +261,100 @@ abstract final class TripService {
   /// check-in: only one caller can move the trip out of `active`, and the
   /// unique index on `safety_alert.tripId` backs this up. Returns the alert
   /// when this call created it, otherwise null.
-  static Future<SafetyAlert?> processDeadline(
+  static Future<SafetyAlert?> processDeadline(Session session, int tripId) =>
+      _raiseAlert(session, tripId);
+
+  static Future<TripSnapshot> requestHelp(
     Session session,
+    String owner,
     int tripId,
   ) async {
+    final trip = await Trip.db.findFirstRow(
+      session,
+      where: (t) => t.id.equals(tripId) & t.ownerId.equals(owner),
+    );
+    if (trip == null) throw notFoundError('That journey could not be found.');
+    if (trip.status != TripStatus.active) {
+      throw conflictError('This journey has already ended.');
+    }
+    final alert = await _raiseAlert(session, tripId, helpForOwner: owner);
+    if (alert == null) throw conflictError('This journey has already ended.');
+    await _cancelDeadline(session, tripId);
+    return TripSnapshot(
+      endedTrip: await Trip.db.findById(session, tripId),
+      serverTime: _now(),
+    );
+  }
+
+  static Future<TripSnapshot> extend(
+    Session session,
+    String owner,
+    int tripId,
+    int minutes,
+  ) async {
+    if (minutes < 1 || minutes > 120) {
+      throw validationError('Extend by between 1 and 120 minutes.');
+    }
+    final trip = await session.db.transaction((tx) async {
+      await lockOwner(session, owner, tx);
+      final existing = await Trip.db.findFirstRow(
+        session,
+        where: (t) => t.id.equals(tripId) & t.ownerId.equals(owner),
+        transaction: tx,
+      );
+      if (existing == null) {
+        throw notFoundError('That journey could not be found.');
+      }
+      final now = _now();
+      if (existing.status != TripStatus.active ||
+          !now.isBefore(existing.alertAt ?? existing.deadline)) {
+        throw conflictError('This journey can no longer be extended.');
+      }
+      final base = existing.deadline.isAfter(now) ? existing.deadline : now;
+      final deadline = base.add(Duration(minutes: minutes));
+      if (deadline.difference(existing.startedAt) > const Duration(hours: 24)) {
+        throw validationError('A journey cannot exceed 24 hours.');
+      }
+      final updated = await Trip.db.updateWhere(
+        session,
+        columnValues: (t) => [
+          t.deadline(deadline),
+          t.alertAt(
+            existing.graceMinutes == 0
+                ? null
+                : deadline.add(Duration(minutes: existing.graceMinutes)),
+          ),
+          t.durationMinutes(deadline.difference(existing.startedAt).inMinutes),
+        ],
+        where: (t) =>
+            t.id.equals(tripId) &
+            t.ownerId.equals(owner) &
+            t.status.equals(TripStatus.active) &
+            ((t.alertAt > now) | (t.alertAt.equals(null) & (t.deadline > now))),
+        transaction: tx,
+      );
+      if (updated.isEmpty) {
+        throw conflictError(
+          'The journey ended before this extension was saved.',
+        );
+      }
+      return updated.single;
+    });
+    // Queue operations stay outside the trip transaction. An old or racing job
+    // rechecks the stored deadline, and the sweep recovers a lost replacement.
+    await _cancelDeadline(session, tripId);
+    final latest = await Trip.db.findById(session, tripId);
+    if (latest?.status == TripStatus.active) {
+      await _scheduleDeadline(session, latest!);
+    }
+    return TripSnapshot(trip: trip, serverTime: _now());
+  }
+
+  static Future<SafetyAlert?> _raiseAlert(
+    Session session,
+    int tripId, {
+    String? helpForOwner,
+  }) async {
     final now = _now();
     final alert = await session.db.transaction((transaction) async {
       final updated = await Trip.db.updateWhere(
@@ -225,11 +363,16 @@ abstract final class TripService {
           t.status(TripStatus.missed),
           t.endedAt(now),
           t.activeOwnerId(null),
+          if (helpForOwner != null) t.helpRequestedAt(now),
+          if (helpForOwner != null) t.companionMode(true),
         ],
         where: (t) =>
             t.id.equals(tripId) &
             t.status.equals(TripStatus.active) &
-            (t.deadline <= now),
+            (helpForOwner != null
+                ? t.ownerId.equals(helpForOwner)
+                : ((t.alertAt <= now) |
+                      (t.alertAt.equals(null) & (t.deadline <= now)))),
         transaction: transaction,
       );
       if (updated.isEmpty) return null;
@@ -243,7 +386,7 @@ abstract final class TripService {
       final travellerName = profile?.displayName ?? 'A SafeCheck user';
       final travellerPhone = profile?.phoneNumber ?? 'unknown number';
 
-      final alert = await SafetyAlert.db.insertRow(
+      var alert = await SafetyAlert.db.insertRow(
         session,
         SafetyAlert(
           ownerId: trip.ownerId,
@@ -255,6 +398,12 @@ abstract final class TripService {
           deadline: trip.deadline,
           createdAt: now,
           contacts: trip.contacts,
+          reason: helpForOwner == null
+              ? AlertReason.missedCheckIn
+              : AlertReason.helpRequested,
+          briefStatus: trip.companionMode && trip.useAiIncidentSummary
+              ? BriefStatus.pending
+              : BriefStatus.fallback,
         ),
         transaction: transaction,
       );
@@ -269,14 +418,44 @@ abstract final class TripService {
         for (final l in links) l.contactPhone: trackingUrl(session, l.token),
       };
 
+      final incidentLinks = <String, String>{};
+      if (trip.companionMode) {
+        final brief = await IncidentService.initialBrief(
+          session,
+          trip,
+          alert,
+          transaction,
+        );
+        alert = await SafetyAlert.db.updateRow(
+          session,
+          alert.copyWith(brief: brief),
+          transaction: transaction,
+        );
+        incidentLinks.addAll(
+          await IncidentService.createLinks(
+            session,
+            trip,
+            alert,
+            linkByPhone,
+            transaction,
+          ),
+        );
+      }
       if (trip.contacts.isNotEmpty) {
         final messages = <AlertMessage>[];
 
         for (final contact in trip.contacts) {
-          final body = alertMessageBody(
-            travellerName: travellerName,
-            trackingUrl: linkByPhone[contact.phoneNumber],
-          );
+          final body = trip.companionMode
+              ? 'SafeCheck: $travellerName '
+                    '${alert.reason == AlertReason.helpRequested ? 'requested help' : 'missed a check-in'}. '
+                    'Journey: ${trip.description}. Deadline ${formatSast(trip.deadline)}. '
+                    'Safety is unconfirmed. Try contacting the traveller.'
+                    '${incidentLinks[contact.phoneNumber] == null ? '' : '\nIncident: ${incidentLinks[contact.phoneNumber]}'}'
+                    '${linkByPhone[contact.phoneNumber] == null ? '' : '\nTrack:\n${linkByPhone[contact.phoneNumber]}'}'
+              : alertMessageBody(
+                  travellerName: travellerName,
+                  trackingUrl: linkByPhone[contact.phoneNumber],
+                );
 
           if (contact.optedIn == true && contact.notifyByWhatsapp) {
             messages.add(
@@ -324,11 +503,14 @@ abstract final class TripService {
 
     if (alert != null) {
       session.log(
-        'Trip $tripId missed its deadline; created alert ${alert.id} with '
-        '${alert.contacts.length} message(s).',
+        'Trip $tripId created ${alert.reason.name} alert ${alert.id} for '
+        '${alert.contacts.length} contact(s).',
         level: LogLevel.warning,
       );
       await MessageDispatcher.dispatchPending(session, alertId: alert.id);
+      if (alert.briefStatus == BriefStatus.pending) {
+        await IncidentService.schedule(session, alert.id!);
+      }
     }
     return alert;
   }
@@ -379,6 +561,7 @@ abstract final class TripService {
     await MessageDispatcher.releaseStuck(session);
     await MessageDispatcher.dispatchPending(session);
     await TrackingService.deleteExpiredLocations(session);
+    await IncidentService.recoverSummaries(session);
     return created;
   }
 
@@ -414,7 +597,10 @@ abstract final class TripService {
   static Future<void> _scheduleDeadline(Session session, Trip trip) async {
     try {
       await FutureCalls()
-          .callAtTime(trip.deadline, identifier: deadlineCallId(trip.id!))
+          .callAtTime(
+            trip.alertAt ?? trip.deadline,
+            identifier: deadlineCallId(trip.id!),
+          )
           .tripDeadline
           .processDeadline(trip.id!);
     } catch (e, stackTrace) {

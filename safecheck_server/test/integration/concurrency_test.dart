@@ -16,6 +16,10 @@ void main() {
 
       Future<void> cleanUp() async {
         final session = sessionBuilder.build();
+        await IncidentAccess.db.deleteWhere(
+          session,
+          where: (t) => t.ownerId.equals(userId),
+        );
         await AlertMessage.db.deleteWhere(
           session,
           where: (t) => t.ownerId.equals(userId),
@@ -131,6 +135,88 @@ void main() {
               endpoints.contact.add(user, 'C$i', '07100000${10 + i}', null),
           ]);
           expect(await endpoints.contact.list(user), hasLength(5));
+        },
+      );
+
+      test(
+        'check-in during grace races extensions and deadline tasks safely',
+        () async {
+          await setUpTraveller(endpoints, user);
+          final contacts = await endpoints.contact.list(user);
+          final trip = (await endpoints.trip.startJourney(
+            user,
+            JourneyRequest(
+              tripType: TripType.walking,
+              description: 'Home',
+              checkInAtUtc: DateTime.now().toUtc().add(
+                const Duration(minutes: 10),
+              ),
+              contactIds: [contacts.first.id!],
+              graceMinutes: 5,
+            ),
+          )).trip!;
+          await Trip.db.updateRow(
+            sessionBuilder.build(),
+            trip.copyWith(
+              deadline: DateTime.now().toUtc().subtract(
+                const Duration(minutes: 1),
+              ),
+              alertAt: DateTime.now().toUtc().add(const Duration(minutes: 4)),
+            ),
+          );
+          await settle([
+            endpoints.trip.extendJourney(user, trip.id!, 15),
+            endpoints.trip.checkIn(user, trip.id!),
+            for (var i = 0; i < 5; i++)
+              endpoints.futureCalls.tripDeadline.processDeadline(
+                sessionBuilder,
+                trip.id!,
+              ),
+          ]);
+          expect(
+            (await endpoints.trip.history(user)).single.status,
+            TripStatus.checkedIn,
+          );
+          expect(await endpoints.alert.listAlerts(user), isEmpty);
+        },
+      );
+
+      test(
+        'explicit help racing a check-in creates at most one incident',
+        () async {
+          await setUpTraveller(endpoints, user);
+          final contacts = await endpoints.contact.list(user);
+          final trip = (await endpoints.trip.startJourney(
+            user,
+            JourneyRequest(
+              tripType: TripType.walking,
+              description: 'Home',
+              checkInAtUtc: DateTime.now().toUtc().add(
+                const Duration(minutes: 10),
+              ),
+              contactIds: [contacts.first.id!],
+            ),
+          )).trip!;
+          await settle([
+            for (var i = 0; i < 4; i++)
+              endpoints.trip.requestHelp(user, trip.id!),
+            endpoints.trip.checkIn(user, trip.id!),
+            endpoints.futureCalls.tripDeadline.processDeadline(
+              sessionBuilder,
+              trip.id!,
+            ),
+          ]);
+          final ended = (await endpoints.trip.history(user)).single;
+          final alerts = await endpoints.alert.listAlerts(user);
+          if (ended.status == TripStatus.checkedIn) {
+            expect(alerts, isEmpty);
+            expect(await endpoints.alert.listMessages(user), isEmpty);
+          } else {
+            expect(ended.helpRequestedAt, isNotNull);
+            expect(alerts, hasLength(1));
+            expect(alerts.single.reason, AlertReason.helpRequested);
+            expect(await endpoints.alert.listMessages(user), hasLength(1));
+          }
         },
       );
     },

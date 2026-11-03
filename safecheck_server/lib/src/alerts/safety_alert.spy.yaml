@@ -14,6 +14,14 @@ fields:
   createdAt: DateTime
   ### Contacts the alert is addressed to, copied from the trip.
   contacts: List<ContactSnapshot>
+  reason: AlertReason, default=missedCheckIn
+  brief: IncidentBrief?
+  briefStatus: BriefStatus, default=fallback
+  briefAttemptedAt: DateTime?
+  resolvedAt: DateTime?
+  resolvedBy: String?, scope=serverOnly
+  resolutionActor: String?
+  resolutionNote: String?
 indexes:
   safety_alert_owner_idx:
     fields: ownerId

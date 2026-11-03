@@ -16,6 +16,10 @@ import 'package:safecheck_client/src/protocol/alerts/alert_message.dart'
     as _inhs2hqy;
 import 'package:safecheck_client/src/protocol/alerts/safety_alert.dart'
     as _ipl1wex2;
+import 'package:safecheck_client/src/protocol/companion/incident_view.dart'
+    as _ixt67ro5;
+import 'package:safecheck_client/src/protocol/companion/journey_request.dart'
+    as _ie608cde;
 import 'package:safecheck_client/src/protocol/contacts/contact_invite.dart'
     as _iceljf2i;
 import 'package:safecheck_client/src/protocol/contacts/trusted_contact.dart'
@@ -50,6 +54,18 @@ class EndpointAlert extends _isc.EndpointRef {
 
   @override
   String get name => 'alert';
+
+  _ida.Future<_ipl1wex2.SafetyAlert> resolveIncident(
+    int alertId,
+    String note,
+  ) => caller.callServerEndpoint<_ipl1wex2.SafetyAlert>(
+    'alert',
+    'resolveIncident',
+    {
+      'alertId': alertId,
+      'note': note,
+    },
+  );
 
   /// The caller's alerts, newest first.
   _ida.Future<List<_ipl1wex2.SafetyAlert>> listAlerts() =>
@@ -357,6 +373,35 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
+/// Access requires a 256-bit private link, with explicit per-journey permission
+/// for resolution. These endpoints never expose an owner's other incidents.
+/// {@category Endpoint}
+class EndpointIncident extends _isc.EndpointRef {
+  EndpointIncident(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'incident';
+
+  _ida.Future<_ixt67ro5.IncidentView?> view(String token) =>
+      caller.callServerEndpoint<_ixt67ro5.IncidentView?>(
+        'incident',
+        'view',
+        {'token': token},
+      );
+
+  _ida.Future<_ixt67ro5.IncidentView?> resolve(
+    String token,
+    String note,
+  ) => caller.callServerEndpoint<_ixt67ro5.IncidentView?>(
+    'incident',
+    'resolve',
+    {
+      'token': token,
+      'note': note,
+    },
+  );
+}
+
 /// Manages the signed-in user's trusted contacts (at most five).
 /// {@category Endpoint}
 class EndpointContact extends _isc.EndpointRef {
@@ -436,6 +481,22 @@ class EndpointPlanning extends _isc.EndpointRef {
     'planning',
     'isAvailable',
     {},
+  );
+
+  _ida.Future<String> prepareSafetyPlan(
+    _ietnx8jp.TripType tripType,
+    String description,
+    DateTime checkInAtUtc,
+    int graceMinutes,
+  ) => caller.callServerEndpoint<String>(
+    'planning',
+    'prepareSafetyPlan',
+    {
+      'tripType': tripType,
+      'description': description,
+      'checkInAtUtc': checkInAtUtc,
+      'graceMinutes': graceMinutes,
+    },
   );
 
   /// [history] alternates user text and the returned draft JSON, at most
@@ -521,6 +582,33 @@ class EndpointTrip extends _isc.EndpointRef {
 
   @override
   String get name => 'trip';
+
+  _ida.Future<_iifp4bsx.TripSnapshot> startJourney(
+    _ie608cde.JourneyRequest request,
+  ) => caller.callServerEndpoint<_iifp4bsx.TripSnapshot>(
+    'trip',
+    'startJourney',
+    {'request': request},
+  );
+
+  _ida.Future<_iifp4bsx.TripSnapshot> extendJourney(
+    int tripId,
+    int minutes,
+  ) => caller.callServerEndpoint<_iifp4bsx.TripSnapshot>(
+    'trip',
+    'extendJourney',
+    {
+      'tripId': tripId,
+      'minutes': minutes,
+    },
+  );
+
+  _ida.Future<_iifp4bsx.TripSnapshot> requestHelp(int tripId) =>
+      caller.callServerEndpoint<_iifp4bsx.TripSnapshot>(
+        'trip',
+        'requestHelp',
+        {'tripId': tripId},
+      );
 
   /// Returns the caller's active trip (if any) and the server time.
   _ida.Future<_iifp4bsx.TripSnapshot> getActiveTrip() =>
@@ -635,6 +723,7 @@ class Client extends _isc.ServerpodClientShared {
     emailIdp = EndpointEmailIdp(this);
     googleIdp = EndpointGoogleIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    incident = EndpointIncident(this);
     contact = EndpointContact(this);
     planning = EndpointPlanning(this);
     profile = EndpointProfile(this);
@@ -650,6 +739,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointGoogleIdp googleIdp;
 
   late final EndpointJwtRefresh jwtRefresh;
+
+  late final EndpointIncident incident;
 
   late final EndpointContact contact;
 
@@ -669,6 +760,7 @@ class Client extends _isc.ServerpodClientShared {
     'emailIdp': emailIdp,
     'googleIdp': googleIdp,
     'jwtRefresh': jwtRefresh,
+    'incident': incident,
     'contact': contact,
     'planning': planning,
     'profile': profile,

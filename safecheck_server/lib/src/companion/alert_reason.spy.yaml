@@ -1,0 +1,4 @@
+enum: AlertReason
+values:
+  - missedCheckIn
+  - helpRequested

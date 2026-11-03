@@ -32,7 +32,16 @@ abstract class Trip implements _is.TableRow<int?>, _is.ProtocolSerialization {
     this.endedAt,
     required this.contacts,
     _ixmrytkl.LocationSharing? locationSharing,
-  }) : locationSharing = locationSharing ?? _ixmrytkl.LocationSharing.off;
+    bool? companionMode,
+    int? graceMinutes,
+    this.alertAt,
+    this.safetyPlanJson,
+    bool? useAiIncidentSummary,
+    this.helpRequestedAt,
+  }) : locationSharing = locationSharing ?? _ixmrytkl.LocationSharing.off,
+       companionMode = companionMode ?? false,
+       graceMinutes = graceMinutes ?? 0,
+       useAiIncidentSummary = useAiIncidentSummary ?? false;
 
   factory Trip({
     int? id,
@@ -47,6 +56,12 @@ abstract class Trip implements _is.TableRow<int?>, _is.ProtocolSerialization {
     DateTime? endedAt,
     required List<_i0udr1y1.ContactSnapshot> contacts,
     _ixmrytkl.LocationSharing? locationSharing,
+    bool? companionMode,
+    int? graceMinutes,
+    DateTime? alertAt,
+    String? safetyPlanJson,
+    bool? useAiIncidentSummary,
+    DateTime? helpRequestedAt,
   }) = _TripImpl;
 
   factory Trip.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -79,6 +94,24 @@ abstract class Trip implements _is.TableRow<int?>, _is.ProtocolSerialization {
           ? null
           : _ixmrytkl.LocationSharing.fromJson(
               (jsonSerialization['locationSharing'] as String),
+            ),
+      companionMode: jsonSerialization['companionMode'] == null
+          ? null
+          : _is.BoolJsonExtension.fromJson(jsonSerialization['companionMode']),
+      graceMinutes: jsonSerialization['graceMinutes'] as int?,
+      alertAt: jsonSerialization['alertAt'] == null
+          ? null
+          : _is.DateTimeJsonExtension.fromJson(jsonSerialization['alertAt']),
+      safetyPlanJson: jsonSerialization['safetyPlanJson'] as String?,
+      useAiIncidentSummary: jsonSerialization['useAiIncidentSummary'] == null
+          ? null
+          : _is.BoolJsonExtension.fromJson(
+              jsonSerialization['useAiIncidentSummary'],
+            ),
+      helpRequestedAt: jsonSerialization['helpRequestedAt'] == null
+          ? null
+          : _is.DateTimeJsonExtension.fromJson(
+              jsonSerialization['helpRequestedAt'],
             ),
     );
   }
@@ -120,6 +153,19 @@ abstract class Trip implements _is.TableRow<int?>, _is.ProtocolSerialization {
   /// Who may see this trip's location. Chosen when the trip starts.
   _ixmrytkl.LocationSharing locationSharing;
 
+  bool companionMode;
+
+  int graceMinutes;
+
+  /// Null means the original deadline applies (legacy trips and zero grace).
+  DateTime? alertAt;
+
+  String? safetyPlanJson;
+
+  bool useAiIncidentSummary;
+
+  DateTime? helpRequestedAt;
+
   @override
   _is.Table<int?> get table => t;
 
@@ -139,6 +185,12 @@ abstract class Trip implements _is.TableRow<int?>, _is.ProtocolSerialization {
     DateTime? endedAt,
     List<_i0udr1y1.ContactSnapshot>? contacts,
     _ixmrytkl.LocationSharing? locationSharing,
+    bool? companionMode,
+    int? graceMinutes,
+    DateTime? alertAt,
+    String? safetyPlanJson,
+    bool? useAiIncidentSummary,
+    DateTime? helpRequestedAt,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -156,6 +208,12 @@ abstract class Trip implements _is.TableRow<int?>, _is.ProtocolSerialization {
       if (endedAt != null) 'endedAt': endedAt?.toJson(),
       'contacts': contacts.toJson(valueToJson: (v) => v.toJson()),
       'locationSharing': locationSharing.toJson(),
+      'companionMode': companionMode,
+      'graceMinutes': graceMinutes,
+      if (alertAt != null) 'alertAt': alertAt?.toJson(),
+      if (safetyPlanJson != null) 'safetyPlanJson': safetyPlanJson,
+      'useAiIncidentSummary': useAiIncidentSummary,
+      if (helpRequestedAt != null) 'helpRequestedAt': helpRequestedAt?.toJson(),
     };
   }
 
@@ -174,6 +232,12 @@ abstract class Trip implements _is.TableRow<int?>, _is.ProtocolSerialization {
       if (endedAt != null) 'endedAt': endedAt?.toJson(),
       'contacts': contacts.toJson(valueToJson: (v) => v.toJsonForProtocol()),
       'locationSharing': locationSharing.toJson(),
+      'companionMode': companionMode,
+      'graceMinutes': graceMinutes,
+      if (alertAt != null) 'alertAt': alertAt?.toJson(),
+      if (safetyPlanJson != null) 'safetyPlanJson': safetyPlanJson,
+      'useAiIncidentSummary': useAiIncidentSummary,
+      if (helpRequestedAt != null) 'helpRequestedAt': helpRequestedAt?.toJson(),
     };
   }
 
@@ -221,6 +285,12 @@ class _TripImpl extends Trip {
     DateTime? endedAt,
     required List<_i0udr1y1.ContactSnapshot> contacts,
     _ixmrytkl.LocationSharing? locationSharing,
+    bool? companionMode,
+    int? graceMinutes,
+    DateTime? alertAt,
+    String? safetyPlanJson,
+    bool? useAiIncidentSummary,
+    DateTime? helpRequestedAt,
   }) : super._(
          id: id,
          ownerId: ownerId,
@@ -234,6 +304,12 @@ class _TripImpl extends Trip {
          endedAt: endedAt,
          contacts: contacts,
          locationSharing: locationSharing,
+         companionMode: companionMode,
+         graceMinutes: graceMinutes,
+         alertAt: alertAt,
+         safetyPlanJson: safetyPlanJson,
+         useAiIncidentSummary: useAiIncidentSummary,
+         helpRequestedAt: helpRequestedAt,
        );
 
   /// Returns a shallow copy of this [Trip]
@@ -253,6 +329,12 @@ class _TripImpl extends Trip {
     Object? endedAt = _Undefined,
     List<_i0udr1y1.ContactSnapshot>? contacts,
     _ixmrytkl.LocationSharing? locationSharing,
+    bool? companionMode,
+    int? graceMinutes,
+    Object? alertAt = _Undefined,
+    Object? safetyPlanJson = _Undefined,
+    bool? useAiIncidentSummary,
+    Object? helpRequestedAt = _Undefined,
   }) {
     return Trip(
       id: id is int? ? id : this.id,
@@ -269,6 +351,16 @@ class _TripImpl extends Trip {
       endedAt: endedAt is DateTime? ? endedAt : this.endedAt,
       contacts: contacts ?? this.contacts.map((e0) => e0.copyWith()).toList(),
       locationSharing: locationSharing ?? this.locationSharing,
+      companionMode: companionMode ?? this.companionMode,
+      graceMinutes: graceMinutes ?? this.graceMinutes,
+      alertAt: alertAt is DateTime? ? alertAt : this.alertAt,
+      safetyPlanJson: safetyPlanJson is String?
+          ? safetyPlanJson
+          : this.safetyPlanJson,
+      useAiIncidentSummary: useAiIncidentSummary ?? this.useAiIncidentSummary,
+      helpRequestedAt: helpRequestedAt is DateTime?
+          ? helpRequestedAt
+          : this.helpRequestedAt,
     );
   }
 }
@@ -343,6 +435,40 @@ class TripUpdateTable extends _is.UpdateTable<TripTable> {
     table.locationSharing,
     value,
   );
+
+  _is.ColumnValue<bool, bool> companionMode(bool value) => _is.ColumnValue(
+    table.companionMode,
+    value,
+  );
+
+  _is.ColumnValue<int, int> graceMinutes(int value) => _is.ColumnValue(
+    table.graceMinutes,
+    value,
+  );
+
+  _is.ColumnValue<DateTime, DateTime> alertAt(DateTime? value) =>
+      _is.ColumnValue(
+        table.alertAt,
+        value,
+      );
+
+  _is.ColumnValue<String, String> safetyPlanJson(String? value) =>
+      _is.ColumnValue(
+        table.safetyPlanJson,
+        value,
+      );
+
+  _is.ColumnValue<bool, bool> useAiIncidentSummary(bool value) =>
+      _is.ColumnValue(
+        table.useAiIncidentSummary,
+        value,
+      );
+
+  _is.ColumnValue<DateTime, DateTime> helpRequestedAt(DateTime? value) =>
+      _is.ColumnValue(
+        table.helpRequestedAt,
+        value,
+      );
 }
 
 class TripTable extends _is.Table<int?> {
@@ -396,6 +522,33 @@ class TripTable extends _is.Table<int?> {
       _is.EnumSerialization.byName,
       hasDefault: true,
     );
+    companionMode = _is.ColumnBool(
+      'companionMode',
+      this,
+      hasDefault: true,
+    );
+    graceMinutes = _is.ColumnInt(
+      'graceMinutes',
+      this,
+      hasDefault: true,
+    );
+    alertAt = _is.ColumnDateTime(
+      'alertAt',
+      this,
+    );
+    safetyPlanJson = _is.ColumnString(
+      'safetyPlanJson',
+      this,
+    );
+    useAiIncidentSummary = _is.ColumnBool(
+      'useAiIncidentSummary',
+      this,
+      hasDefault: true,
+    );
+    helpRequestedAt = _is.ColumnDateTime(
+      'helpRequestedAt',
+      this,
+    );
   }
 
   late final TripUpdateTable updateTable;
@@ -430,6 +583,19 @@ class TripTable extends _is.Table<int?> {
   /// Who may see this trip's location. Chosen when the trip starts.
   late final _is.ColumnEnum<_ixmrytkl.LocationSharing> locationSharing;
 
+  late final _is.ColumnBool companionMode;
+
+  late final _is.ColumnInt graceMinutes;
+
+  /// Null means the original deadline applies (legacy trips and zero grace).
+  late final _is.ColumnDateTime alertAt;
+
+  late final _is.ColumnString safetyPlanJson;
+
+  late final _is.ColumnBool useAiIncidentSummary;
+
+  late final _is.ColumnDateTime helpRequestedAt;
+
   @override
   List<_is.Column> get columns => [
     id,
@@ -444,6 +610,12 @@ class TripTable extends _is.Table<int?> {
     endedAt,
     contacts,
     locationSharing,
+    companionMode,
+    graceMinutes,
+    alertAt,
+    safetyPlanJson,
+    useAiIncidentSummary,
+    helpRequestedAt,
   ];
 }
 

@@ -3,6 +3,7 @@ import 'package:safecheck_client/safecheck_client.dart';
 
 import '../reminders/check_in_reminder.dart';
 import '../util/format.dart';
+import 'safety_plan_card.dart';
 
 /// Reviews a draft only. Opening or dismissing this dialog starts no trip.
 class TripReviewDialog extends StatelessWidget {
@@ -16,6 +17,10 @@ class TripReviewDialog extends StatelessWidget {
     required this.locationSharing,
     required this.reminderMode,
     this.exactDeadline = false,
+    this.graceMinutes = 0,
+    this.safetyPlanJson,
+    this.useAiIncidentSummary = false,
+    this.allowContactResolution = false,
   });
 
   final TripType tripType;
@@ -26,6 +31,10 @@ class TripReviewDialog extends StatelessWidget {
   final LocationSharing locationSharing;
   final CheckInReminderMode reminderMode;
   final bool exactDeadline;
+  final int graceMinutes;
+  final String? safetyPlanJson;
+  final bool useAiIncidentSummary;
+  final bool allowContactResolution;
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +95,19 @@ class TripReviewDialog extends StatelessWidget {
               },
             ),
             const Divider(height: 24),
+            if (graceMinutes > 0)
+              Text(
+                'Grace period: $graceMinutes minutes. Alert time: ${formatSastDateTime(context, estimatedDeadline.add(Duration(minutes: graceMinutes)))}.',
+              ),
+            if (useAiIncidentSummary)
+              const Text(
+                'Meta may organize an incident brief after an alert. Standard guidance is available immediately if AI fails.',
+              ),
+            if (allowContactResolution)
+              const Text(
+                'Accepted contacts with a private incident link may resolve the incident. Anyone holding that link has the same permission for 48 hours.',
+              ),
+            SafetyPlanCard(planJson: safetyPlanJson),
             Text(
               'Trusted contacts (${contacts.length})',
               style: text.titleSmall,

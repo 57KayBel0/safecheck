@@ -110,3 +110,17 @@ display-name/phone profile. The app requests identity scopes only.
 Contact invite acceptance is implemented, but it is not a general SMS opt-out:
 SMS preference may remain enabled for contacts who have not accepted WhatsApp.
 Existing trip snapshots also remain unchanged by later contact edits/responses.
+
+
+## Companion changes reviewed from source, 3 November 2026
+
+The policy draft now describes optional Meta safety plans and incident briefs,
+per-journey selection/grace/help/extensions, stored plan/brief/resolution records,
+and private incident links. Incident access lasts 48 hours and its access-table
+row stores a hash; full bearer links remain in saved alert-message content.
+Accepted contacts get resolution permission only after a separate per-journey
+traveller opt-in. Resolution stops pending notifications, not claimed/provider
+submissions. Contact links and their permissions must be treated as private.
+The existing sweep deletes expired incident-access rows. This does not erase
+saved incident/message content or establish backup deletion. Live Meta access,
+provider retention and deployed settings still require verification.

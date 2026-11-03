@@ -18,16 +18,19 @@ abstract class ContactSnapshot
     implements _isc.SerializableModel, _isc.ProtocolSerialization {
   ContactSnapshot._({
     required this.name,
+    bool? canResolveIncident,
     required this.phoneNumber,
     this.relationship,
     this.optedIn,
     bool? notifyByWhatsapp,
     bool? notifyBySms,
-  }) : notifyByWhatsapp = notifyByWhatsapp ?? true,
+  }) : canResolveIncident = canResolveIncident ?? false,
+       notifyByWhatsapp = notifyByWhatsapp ?? true,
        notifyBySms = notifyBySms ?? true;
 
   factory ContactSnapshot({
     required String name,
+    bool? canResolveIncident,
     required String phoneNumber,
     String? relationship,
     bool? optedIn,
@@ -38,6 +41,11 @@ abstract class ContactSnapshot
   factory ContactSnapshot.fromJson(Map<String, dynamic> jsonSerialization) {
     return ContactSnapshot(
       name: jsonSerialization['name'] as String,
+      canResolveIncident: jsonSerialization['canResolveIncident'] == null
+          ? null
+          : _isc.BoolJsonExtension.fromJson(
+              jsonSerialization['canResolveIncident'],
+            ),
       phoneNumber: jsonSerialization['phoneNumber'] as String,
       relationship: jsonSerialization['relationship'] as String?,
       optedIn: jsonSerialization['optedIn'] == null
@@ -55,6 +63,8 @@ abstract class ContactSnapshot
   }
 
   String name;
+
+  bool canResolveIncident;
 
   String phoneNumber;
 
@@ -75,6 +85,7 @@ abstract class ContactSnapshot
   @_isc.useResult
   ContactSnapshot copyWith({
     String? name,
+    bool? canResolveIncident,
     String? phoneNumber,
     String? relationship,
     bool? optedIn,
@@ -86,6 +97,7 @@ abstract class ContactSnapshot
     return {
       '__className__': 'ContactSnapshot',
       'name': name,
+      'canResolveIncident': canResolveIncident,
       'phoneNumber': phoneNumber,
       if (relationship != null) 'relationship': relationship,
       if (optedIn != null) 'optedIn': optedIn,
@@ -99,6 +111,7 @@ abstract class ContactSnapshot
     return {
       '__className__': 'ContactSnapshot',
       'name': name,
+      'canResolveIncident': canResolveIncident,
       'phoneNumber': phoneNumber,
       if (relationship != null) 'relationship': relationship,
       if (optedIn != null) 'optedIn': optedIn,
@@ -118,6 +131,7 @@ class _Undefined {}
 class _ContactSnapshotImpl extends ContactSnapshot {
   _ContactSnapshotImpl({
     required String name,
+    bool? canResolveIncident,
     required String phoneNumber,
     String? relationship,
     bool? optedIn,
@@ -125,6 +139,7 @@ class _ContactSnapshotImpl extends ContactSnapshot {
     bool? notifyBySms,
   }) : super._(
          name: name,
+         canResolveIncident: canResolveIncident,
          phoneNumber: phoneNumber,
          relationship: relationship,
          optedIn: optedIn,
@@ -138,6 +153,7 @@ class _ContactSnapshotImpl extends ContactSnapshot {
   @override
   ContactSnapshot copyWith({
     String? name,
+    bool? canResolveIncident,
     String? phoneNumber,
     Object? relationship = _Undefined,
     Object? optedIn = _Undefined,
@@ -146,6 +162,7 @@ class _ContactSnapshotImpl extends ContactSnapshot {
   }) {
     return ContactSnapshot(
       name: name ?? this.name,
+      canResolveIncident: canResolveIncident ?? this.canResolveIncident,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       relationship: relationship is String? ? relationship : this.relationship,
       optedIn: optedIn is bool? ? optedIn : this.optedIn,

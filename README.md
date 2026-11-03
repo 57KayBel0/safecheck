@@ -65,15 +65,27 @@ trip/alert invariants. BulkSMS integration runs on the server, never in Flutter.
 Generated server code in `lib/src/generated/` is also maintained by Serverpod.
 Change models/endpoints and let the existing workflow regenerate it.
 
-## AI planning status
+## SafeCheck AI companion
 
-A Meta Model API trip-planning flow connects the authenticated backend and Flutter
-app. Describe a trip, clarify missing details, then review and explicitly confirm
-the proposed exact deadline. Planning itself cannot start trips or send alerts.
-Private server credentials enable the AI option; manual setup remains available.
-Live provider verification is still outstanding. See
-[AI_PLANNER.md](safecheck_server/AI_PLANNER.md) for the service contract, private
-configuration and verification steps.
+The Trip tab offers natural-language journey drafts and personalized safety
+plans using Meta Model API. Review the exact SAST check-in time, selected
+contacts, grace period and privacy choices before starting. AI controls stay
+visible when availability checks fail; manual setup and clearly labelled
+standard plans remain usable.
+
+An active journey supports check-in during grace, explicit extensions and a
+confirmed help request. A missed check-in or help request creates a factual
+incident brief and notification outbox atomically. Optional AI organization runs
+separately after dispatch, preserving facts and uncertainties. It cannot change
+timers or take safety actions. Incident links expire after 48 hours; accepted
+contacts may resolve only when the traveller explicitly grants that permission
+for the journey. Resolution stops pending messages, not messages already claimed
+or submitted to a provider.
+
+Live Meta access still needs verification with the owner's private server key.
+See [AI_PLANNER.md](safecheck_server/AI_PLANNER.md) for contracts, deployment and
+a three-minute demonstration. Voice, multilingual and guaranteed background
+tracking are outside this implementation.
 
 ## Prerequisites and local setup
 

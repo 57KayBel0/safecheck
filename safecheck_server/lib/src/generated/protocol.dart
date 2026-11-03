@@ -33,9 +33,17 @@ import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
 import 'alerts/alert_message.dart' as _isas3mld;
 import 'alerts/safety_alert.dart' as _i79al053;
 import 'common/safecheck_exception.dart' as _iontdvzq;
+import 'companion/alert_reason.dart' as _iwolc6uz;
+import 'companion/brief_status.dart' as _i4443g4d;
+import 'companion/incident_access.dart' as _i0z2fbwj;
+import 'companion/incident_brief.dart' as _i42dowtq;
+import 'companion/incident_view.dart' as _intz7cqw;
+import 'companion/journey_request.dart' as _i1v3s9cv;
 import 'contacts/contact_invite.dart' as _i3noworj;
 import 'contacts/contact_opt_in_status.dart' as _iz3pr2uv;
 import 'contacts/trusted_contact.dart' as _ixhyrlmy;
+import 'future_calls_generated_models/incident_summary_future_call_generate_model.dart'
+    as _ipdwtssp;
 import 'future_calls_generated_models/trip_deadline_future_call_process_deadline_model.dart'
     as _ih51nflp;
 import 'messaging/message_channel.dart' as _i9p5tz3d;
@@ -55,6 +63,12 @@ import 'trips/trip_type.dart' as _ie9y6u8r;
 export 'alerts/alert_message.dart';
 export 'alerts/safety_alert.dart';
 export 'common/safecheck_exception.dart';
+export 'companion/alert_reason.dart';
+export 'companion/brief_status.dart';
+export 'companion/incident_access.dart';
+export 'companion/incident_brief.dart';
+export 'companion/incident_view.dart';
+export 'companion/journey_request.dart';
 export 'contacts/contact_invite.dart';
 export 'contacts/contact_opt_in_status.dart';
 export 'contacts/trusted_contact.dart';
@@ -81,6 +95,99 @@ class Protocol extends _is.DatabaseSerializationManager {
   static final Protocol _instance = Protocol._().._registerHostProtocols();
 
   static List<_isp.TableDefinition> get targetTableDefinitions => [
+    _isp.TableDefinition(
+      name: 'incident_access',
+      dartName: 'IncidentAccess',
+      schema: 'public',
+      module: 'safecheck',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'tokenHash',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ownerId',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'alertId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'contactName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'canResolve',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
+          name: 'trackingUrl',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'expiresAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'incident_access_token_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'tokenHash',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'incident_access_alert_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'alertId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
     _isp.TableDefinition(
       name: 'planning_quota',
       dartName: 'PlanningQuota',
@@ -209,6 +316,56 @@ class Protocol extends _is.DatabaseSerializationManager {
           columnType: _isp.ColumnType.json,
           isNullable: false,
           dartType: 'List<protocol:ContactSnapshot>',
+        ),
+        _isp.ColumnDefinition(
+          name: 'reason',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:AlertReason',
+          columnDefault: '\'missedCheckIn\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'brief',
+          columnType: _isp.ColumnType.json,
+          isNullable: true,
+          dartType: 'protocol:IncidentBrief?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'briefStatus',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'protocol:BriefStatus',
+          columnDefault: '\'fallback\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'briefAttemptedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'resolvedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'resolvedBy',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'resolutionActor',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'resolutionNote',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
         ),
       ],
       foreignKeys: [],
@@ -536,6 +693,45 @@ class Protocol extends _is.DatabaseSerializationManager {
           isNullable: false,
           dartType: 'protocol:LocationSharing',
           columnDefault: '\'off\'',
+        ),
+        _isp.ColumnDefinition(
+          name: 'companionMode',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'graceMinutes',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+          columnDefault: '0',
+        ),
+        _isp.ColumnDefinition(
+          name: 'alertAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'safetyPlanJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'useAiIncidentSummary',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+          columnDefault: 'false',
+        ),
+        _isp.ColumnDefinition(
+          name: 'helpRequestedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
         ),
       ],
       foreignKeys: [],
@@ -894,6 +1090,24 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _iontdvzq.SafeCheckException) {
       return _iontdvzq.SafeCheckException.fromJson(data) as T;
     }
+    if (t == _iwolc6uz.AlertReason) {
+      return _iwolc6uz.AlertReason.fromJson(data) as T;
+    }
+    if (t == _i4443g4d.BriefStatus) {
+      return _i4443g4d.BriefStatus.fromJson(data) as T;
+    }
+    if (t == _i0z2fbwj.IncidentAccess) {
+      return _i0z2fbwj.IncidentAccess.fromJson(data) as T;
+    }
+    if (t == _i42dowtq.IncidentBrief) {
+      return _i42dowtq.IncidentBrief.fromJson(data) as T;
+    }
+    if (t == _intz7cqw.IncidentView) {
+      return _intz7cqw.IncidentView.fromJson(data) as T;
+    }
+    if (t == _i1v3s9cv.JourneyRequest) {
+      return _i1v3s9cv.JourneyRequest.fromJson(data) as T;
+    }
     if (t == _i3noworj.ContactInvite) {
       return _i3noworj.ContactInvite.fromJson(data) as T;
     }
@@ -902,6 +1116,10 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _ixhyrlmy.TrustedContact) {
       return _ixhyrlmy.TrustedContact.fromJson(data) as T;
+    }
+    if (t == _ipdwtssp.IncidentSummaryFutureCallGenerateModel) {
+      return _ipdwtssp.IncidentSummaryFutureCallGenerateModel.fromJson(data)
+          as T;
     }
     if (t == _ih51nflp.TripDeadlineFutureCallProcessDeadlineModel) {
       return _ih51nflp.TripDeadlineFutureCallProcessDeadlineModel.fromJson(data)
@@ -959,6 +1177,27 @@ class Protocol extends _is.DatabaseSerializationManager {
       return (data != null ? _iontdvzq.SafeCheckException.fromJson(data) : null)
           as T;
     }
+    if (t == _is.getType<_iwolc6uz.AlertReason?>()) {
+      return (data != null ? _iwolc6uz.AlertReason.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i4443g4d.BriefStatus?>()) {
+      return (data != null ? _i4443g4d.BriefStatus.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i0z2fbwj.IncidentAccess?>()) {
+      return (data != null ? _i0z2fbwj.IncidentAccess.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i42dowtq.IncidentBrief?>()) {
+      return (data != null ? _i42dowtq.IncidentBrief.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_intz7cqw.IncidentView?>()) {
+      return (data != null ? _intz7cqw.IncidentView.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i1v3s9cv.JourneyRequest?>()) {
+      return (data != null ? _i1v3s9cv.JourneyRequest.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_i3noworj.ContactInvite?>()) {
       return (data != null ? _i3noworj.ContactInvite.fromJson(data) : null)
           as T;
@@ -969,6 +1208,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_ixhyrlmy.TrustedContact?>()) {
       return (data != null ? _ixhyrlmy.TrustedContact.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ipdwtssp.IncidentSummaryFutureCallGenerateModel?>()) {
+      return (data != null
+              ? _ipdwtssp.IncidentSummaryFutureCallGenerateModel.fromJson(data)
+              : null)
           as T;
     }
     if (t ==
@@ -1034,6 +1279,12 @@ class Protocol extends _is.DatabaseSerializationManager {
               .map((e) => deserialize<_ie7zf2se.ContactSnapshot>(e))
               .toList()
           as T;
+    }
+    if (t == List<String>) {
+      return (data as List).map((e) => deserialize<String>(e)).toList() as T;
+    }
+    if (t == List<int>) {
+      return (data as List).map((e) => deserialize<int>(e)).toList() as T;
     }
     if (t == List<_iuq30u7q.SafetyAlert>) {
       return (data as List)
@@ -1101,9 +1352,17 @@ class Protocol extends _is.DatabaseSerializationManager {
       _isas3mld.AlertMessage => 'AlertMessage',
       _i79al053.SafetyAlert => 'SafetyAlert',
       _iontdvzq.SafeCheckException => 'SafeCheckException',
+      _iwolc6uz.AlertReason => 'AlertReason',
+      _i4443g4d.BriefStatus => 'BriefStatus',
+      _i0z2fbwj.IncidentAccess => 'IncidentAccess',
+      _i42dowtq.IncidentBrief => 'IncidentBrief',
+      _intz7cqw.IncidentView => 'IncidentView',
+      _i1v3s9cv.JourneyRequest => 'JourneyRequest',
       _i3noworj.ContactInvite => 'ContactInvite',
       _iz3pr2uv.ContactOptInStatus => 'ContactOptInStatus',
       _ixhyrlmy.TrustedContact => 'TrustedContact',
+      _ipdwtssp.IncidentSummaryFutureCallGenerateModel =>
+        'IncidentSummaryFutureCallGenerateModel',
       _ih51nflp.TripDeadlineFutureCallProcessDeadlineModel =>
         'TripDeadlineFutureCallProcessDeadlineModel',
       _i9p5tz3d.MessageChannel => 'MessageChannel',
@@ -1140,12 +1399,26 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'SafetyAlert';
       case _iontdvzq.SafeCheckException():
         return 'SafeCheckException';
+      case _iwolc6uz.AlertReason():
+        return 'AlertReason';
+      case _i4443g4d.BriefStatus():
+        return 'BriefStatus';
+      case _i0z2fbwj.IncidentAccess():
+        return 'IncidentAccess';
+      case _i42dowtq.IncidentBrief():
+        return 'IncidentBrief';
+      case _intz7cqw.IncidentView():
+        return 'IncidentView';
+      case _i1v3s9cv.JourneyRequest():
+        return 'JourneyRequest';
       case _i3noworj.ContactInvite():
         return 'ContactInvite';
       case _iz3pr2uv.ContactOptInStatus():
         return 'ContactOptInStatus';
       case _ixhyrlmy.TrustedContact():
         return 'TrustedContact';
+      case _ipdwtssp.IncidentSummaryFutureCallGenerateModel():
+        return 'IncidentSummaryFutureCallGenerateModel';
       case _ih51nflp.TripDeadlineFutureCallProcessDeadlineModel():
         return 'TripDeadlineFutureCallProcessDeadlineModel';
       case _i9p5tz3d.MessageChannel():
@@ -1211,6 +1484,24 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (dataClassName == 'SafeCheckException') {
       return deserialize<_iontdvzq.SafeCheckException>(data['data']);
     }
+    if (dataClassName == 'AlertReason') {
+      return deserialize<_iwolc6uz.AlertReason>(data['data']);
+    }
+    if (dataClassName == 'BriefStatus') {
+      return deserialize<_i4443g4d.BriefStatus>(data['data']);
+    }
+    if (dataClassName == 'IncidentAccess') {
+      return deserialize<_i0z2fbwj.IncidentAccess>(data['data']);
+    }
+    if (dataClassName == 'IncidentBrief') {
+      return deserialize<_i42dowtq.IncidentBrief>(data['data']);
+    }
+    if (dataClassName == 'IncidentView') {
+      return deserialize<_intz7cqw.IncidentView>(data['data']);
+    }
+    if (dataClassName == 'JourneyRequest') {
+      return deserialize<_i1v3s9cv.JourneyRequest>(data['data']);
+    }
     if (dataClassName == 'ContactInvite') {
       return deserialize<_i3noworj.ContactInvite>(data['data']);
     }
@@ -1219,6 +1510,11 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'TrustedContact') {
       return deserialize<_ixhyrlmy.TrustedContact>(data['data']);
+    }
+    if (dataClassName == 'IncidentSummaryFutureCallGenerateModel') {
+      return deserialize<_ipdwtssp.IncidentSummaryFutureCallGenerateModel>(
+        data['data'],
+      );
     }
     if (dataClassName == 'TripDeadlineFutureCallProcessDeadlineModel') {
       return deserialize<_ih51nflp.TripDeadlineFutureCallProcessDeadlineModel>(
@@ -1312,6 +1608,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return _isas3mld.AlertMessage.t;
       case _i79al053.SafetyAlert:
         return _i79al053.SafetyAlert.t;
+      case _i0z2fbwj.IncidentAccess:
+        return _i0z2fbwj.IncidentAccess.t;
       case _ixhyrlmy.TrustedContact:
         return _ixhyrlmy.TrustedContact.t;
       case _id4akxn0.PlanningQuota:

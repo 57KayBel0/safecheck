@@ -10,6 +10,7 @@ import 'src/generated/serverpod.dart';
 import 'src/messaging/bulk_sms_message_sender.dart';
 import 'src/messaging/message_dispatcher.dart';
 import 'src/trips/trip_service.dart';
+import 'src/companion/incident_page_route.dart';
 import 'src/web/routes/app_config_route.dart';
 import 'src/web/routes/safecheck_pages.dart';
 
@@ -75,6 +76,7 @@ void run(List<String> args) async {
   pod.webServer.addRoute(InvitePageRoute(), '/c');
   pod.webServer.addRoute(TrackingPageRoute(), '/t');
   pod.webServer.addRoute(TrackingDataRoute(), '/t/:token');
+  pod.webServer.addRoute(IncidentPageRoute(), '/incident');
 
   // Checks if the flutter web app has been built and serves it if it has.
   final appDir = Directory(Uri(path: 'web/app').toFilePath());

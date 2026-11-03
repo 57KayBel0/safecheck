@@ -9,6 +9,32 @@ class TripEndpoint extends Endpoint {
   @override
   bool get requireLogin => true;
 
+  Future<TripSnapshot> startJourney(Session session, JourneyRequest request) =>
+      TripService.start(
+        session,
+        ownerIdOf(session),
+        tripType: request.tripType,
+        description: request.description,
+        durationMinutes: 1,
+        exactDeadline: request.checkInAtUtc,
+        contactIds: request.contactIds,
+        graceMinutes: request.graceMinutes,
+        locationSharing: request.locationSharing,
+        safetyPlanJson: request.safetyPlanJson,
+        companionMode: true,
+        useAiIncidentSummary: request.useAiIncidentSummary,
+        allowContactResolution: request.allowContactResolution,
+      );
+
+  Future<TripSnapshot> extendJourney(
+    Session session,
+    int tripId,
+    int minutes,
+  ) => TripService.extend(session, ownerIdOf(session), tripId, minutes);
+
+  Future<TripSnapshot> requestHelp(Session session, int tripId) =>
+      TripService.requestHelp(session, ownerIdOf(session), tripId);
+
   /// Returns the caller's active trip (if any) and the server time.
   Future<TripSnapshot> getActiveTrip(Session session) {
     return TripService.getActive(session, ownerIdOf(session));

@@ -17,11 +17,17 @@ import 'package:safecheck_server/src/generated/alerts/alert_message.dart'
     as _ibat3zb3;
 import 'package:safecheck_server/src/generated/alerts/safety_alert.dart'
     as _iuq30u7q;
+import 'package:safecheck_server/src/generated/companion/incident_view.dart'
+    as _ikjh7kjc;
+import 'package:safecheck_server/src/generated/companion/journey_request.dart'
+    as _imkic0vl;
 import 'package:safecheck_server/src/generated/contacts/contact_invite.dart'
     as _iftu7wz8;
 import 'package:safecheck_server/src/generated/contacts/trusted_contact.dart'
     as _imtfj37e;
 import 'package:safecheck_server/src/generated/future_calls.dart' as _im5f7bbj;
+import 'package:safecheck_server/src/generated/future_calls_generated_models/incident_summary_future_call_generate_model.dart'
+    as _iznx5unf;
 import 'package:safecheck_server/src/generated/future_calls_generated_models/trip_deadline_future_call_process_deadline_model.dart'
     as _irg6yjsl;
 import 'package:safecheck_server/src/generated/profile/user_profile.dart'
@@ -186,6 +192,8 @@ class TestEndpoints {
 
   late final _JwtRefreshEndpoint jwtRefresh;
 
+  late final _IncidentEndpoint incident;
+
   late final _ContactEndpoint contact;
 
   late final _PlanningEndpoint planning;
@@ -220,6 +228,10 @@ class _InternalTestEndpoints extends TestEndpoints
       endpoints,
       serializationManager,
     );
+    incident = _IncidentEndpoint(
+      endpoints,
+      serializationManager,
+    );
     contact = _ContactEndpoint(
       endpoints,
       serializationManager,
@@ -244,6 +256,8 @@ class _InternalTestEndpoints extends TestEndpoints
 }
 
 class _FutureCalls {
+  late final incidentSummary = _IncidentSummaryFutureCall();
+
   late final tripDeadline = _TripDeadlineFutureCall();
 }
 
@@ -256,6 +270,41 @@ class _AlertEndpoint {
   final _is.EndpointDispatch _endpointDispatch;
 
   final _is.SerializationManager _serializationManager;
+
+  _ida.Future<_iuq30u7q.SafetyAlert> resolveIncident(
+    _ist.TestSessionBuilder sessionBuilder,
+    int alertId,
+    String note,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'alert',
+            method: 'resolveIncident',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'alert',
+          methodName: 'resolveIncident',
+          parameters: _ist.testObjectToJson({
+            'alertId': alertId,
+            'note': note,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iuq30u7q.SafetyAlert>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
 
   _ida.Future<List<_iuq30u7q.SafetyAlert>> listAlerts(
     _ist.TestSessionBuilder sessionBuilder,
@@ -777,6 +826,83 @@ class _JwtRefreshEndpoint {
   }
 }
 
+class _IncidentEndpoint {
+  _IncidentEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<_ikjh7kjc.IncidentView?> view(
+    _ist.TestSessionBuilder sessionBuilder,
+    String token,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'incident',
+            method: 'view',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'incident',
+          methodName: 'view',
+          parameters: _ist.testObjectToJson({'token': token}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ikjh7kjc.IncidentView?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ikjh7kjc.IncidentView?> resolve(
+    _ist.TestSessionBuilder sessionBuilder,
+    String token,
+    String note,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'incident',
+            method: 'resolve',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'incident',
+          methodName: 'resolve',
+          parameters: _ist.testObjectToJson({
+            'token': token,
+            'note': note,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ikjh7kjc.IncidentView?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
 class _ContactEndpoint {
   _ContactEndpoint(
     this._endpointDispatch,
@@ -994,6 +1120,45 @@ class _PlanningEndpoint {
     });
   }
 
+  _ida.Future<String> prepareSafetyPlan(
+    _ist.TestSessionBuilder sessionBuilder,
+    _iiisoczy.TripType tripType,
+    String description,
+    DateTime checkInAtUtc,
+    int graceMinutes,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'planning',
+            method: 'prepareSafetyPlan',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'planning',
+          methodName: 'prepareSafetyPlan',
+          parameters: _ist.testObjectToJson({
+            'tripType': tripType,
+            'description': description,
+            'checkInAtUtc': checkInAtUtc,
+            'graceMinutes': graceMinutes,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<String>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
   _ida.Future<String> propose(
     _ist.TestSessionBuilder sessionBuilder,
     String input,
@@ -1193,6 +1358,103 @@ class _TripEndpoint {
 
   final _is.SerializationManager _serializationManager;
 
+  _ida.Future<_ijcus4gd.TripSnapshot> startJourney(
+    _ist.TestSessionBuilder sessionBuilder,
+    _imkic0vl.JourneyRequest request,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'trip',
+            method: 'startJourney',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'trip',
+          methodName: 'startJourney',
+          parameters: _ist.testObjectToJson({'request': request}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ijcus4gd.TripSnapshot>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ijcus4gd.TripSnapshot> extendJourney(
+    _ist.TestSessionBuilder sessionBuilder,
+    int tripId,
+    int minutes,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'trip',
+            method: 'extendJourney',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'trip',
+          methodName: 'extendJourney',
+          parameters: _ist.testObjectToJson({
+            'tripId': tripId,
+            'minutes': minutes,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ijcus4gd.TripSnapshot>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ijcus4gd.TripSnapshot> requestHelp(
+    _ist.TestSessionBuilder sessionBuilder,
+    int tripId,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'trip',
+            method: 'requestHelp',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'trip',
+          methodName: 'requestHelp',
+          parameters: _ist.testObjectToJson({'tripId': tripId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ijcus4gd.TripSnapshot>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
   _ida.Future<_ijcus4gd.TripSnapshot> getActiveTrip(
     _ist.TestSessionBuilder sessionBuilder,
   ) async {
@@ -1391,6 +1653,27 @@ class _TripEndpoint {
         await _localUniqueSession.close();
       }
     });
+  }
+}
+
+class _IncidentSummaryFutureCall {
+  Future<void> generate(
+    _ist.TestSessionBuilder sessionBuilder,
+    int alertId,
+  ) async {
+    var object = _iznx5unf.IncidentSummaryFutureCallGenerateModel(
+      alertId: alertId,
+    );
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _im5f7bbj.IncidentSummaryGenerateFutureCall().invoke(
+        _localUniqueSession,
+        object,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
   }
 }
 

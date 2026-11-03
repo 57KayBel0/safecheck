@@ -30,10 +30,27 @@ New work in this iteration:
 - AI/privacy information in the app and the draft privacy policy; manual setup
   remains available when the provider or its configuration is unavailable.
 
-Manual setup starts a duration-based countdown at confirmation. AI planning
-instead preserves the absolute time approved in review, displayed in SAST.
+The companion journey form preserves the exact check-in time approved in review,
+displayed in SAST, whether entered manually or interpreted by AI. Legacy clients
+can still use the original duration-based endpoint.
 The server response remains authoritative. Contacts are re-read by the backend
 at start; review does not lock them against concurrent edits on another device.
+
+## Companion expansion on 3 November 2026
+
+- Selected-contact snapshots, exact SAST time selection and configurable grace.
+- Personalized safety plans with honest standard fallback and stored reviewed plans.
+- Owner-authorized extensions, explicit help requests and check-in during grace.
+- Deterministic incident facts and optional Meta organization after dispatch;
+  AI output is limited to fact indexes and allowed action codes.
+- Private 48-hour incident pages; separate opt-in grants accepted contacts
+  resolution permission. Owner resolution and pending-notification cancellation.
+- AI controls remain visible with retry/status feedback after failed availability
+  checks. Configuration detection is not a successful provider request.
+- Additive migration and regenerated protocol/client/test tooling.
+
+The full companion flow is new in this expansion. The earlier scheduler,
+authentication, delivery integration and tracking remain existing infrastructure.
 
 ## Required before a Meta hackathon submission
 

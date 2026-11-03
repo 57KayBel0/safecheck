@@ -10,6 +10,8 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:safecheck_server/src/generated/companion/journey_request.dart'
+    as _imkic0vl;
 import 'package:safecheck_server/src/generated/future_calls.dart' as _im5f7bbj;
 import 'package:safecheck_server/src/generated/tracking/location_point.dart'
     as _inw09ail;
@@ -26,6 +28,7 @@ import '../alerts/alert_endpoint.dart' as _itgxyvy1;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/google_idp_endpoint.dart' as _i71axiz0;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
+import '../companion/incident_endpoint.dart' as _itb77rse;
 import '../contacts/contact_endpoint.dart' as _i468fl3m;
 import '../planning/planning_endpoint.dart' as _i1oqgc9d;
 import '../profile/profile_endpoint.dart' as _i6ky944g;
@@ -59,6 +62,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'jwtRefresh',
+          null,
+        ),
+      'incident': _itb77rse.IncidentEndpoint()
+        ..initialize(
+          server,
+          'incident',
           null,
         ),
       'contact': _i468fl3m.ContactEndpoint()
@@ -96,6 +105,31 @@ class Endpoints extends _is.EndpointDispatch {
       name: 'alert',
       endpoint: endpoints['alert']!,
       methodConnectors: {
+        'resolveIncident': _is.MethodConnector(
+          name: 'resolveIncident',
+          params: {
+            'alertId': _is.ParameterDescription(
+              name: 'alertId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'note': _is.ParameterDescription(
+              name: 'note',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['alert'] as _itgxyvy1.AlertEndpoint)
+                  .resolveIncident(
+                    session,
+                    params['alertId'],
+                    params['note'],
+                  ),
+        ),
         'listAlerts': _is.MethodConnector(
           name: 'listAlerts',
           params: {},
@@ -406,6 +440,56 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
+    connectors['incident'] = _is.EndpointConnector(
+      name: 'incident',
+      endpoint: endpoints['incident']!,
+      methodConnectors: {
+        'view': _is.MethodConnector(
+          name: 'view',
+          params: {
+            'token': _is.ParameterDescription(
+              name: 'token',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['incident'] as _itb77rse.IncidentEndpoint).view(
+                    session,
+                    params['token'],
+                  ),
+        ),
+        'resolve': _is.MethodConnector(
+          name: 'resolve',
+          params: {
+            'token': _is.ParameterDescription(
+              name: 'token',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'note': _is.ParameterDescription(
+              name: 'note',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['incident'] as _itb77rse.IncidentEndpoint).resolve(
+                    session,
+                    params['token'],
+                    params['note'],
+                  ),
+        ),
+      },
+    );
     connectors['contact'] = _is.EndpointConnector(
       name: 'contact',
       endpoint: endpoints['contact']!,
@@ -542,6 +626,43 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['planning'] as _i1oqgc9d.PlanningEndpoint)
                   .isAvailable(session),
         ),
+        'prepareSafetyPlan': _is.MethodConnector(
+          name: 'prepareSafetyPlan',
+          params: {
+            'tripType': _is.ParameterDescription(
+              name: 'tripType',
+              type: _is.getType<_iiisoczy.TripType>(),
+              nullable: false,
+            ),
+            'description': _is.ParameterDescription(
+              name: 'description',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'checkInAtUtc': _is.ParameterDescription(
+              name: 'checkInAtUtc',
+              type: _is.getType<DateTime>(),
+              nullable: false,
+            ),
+            'graceMinutes': _is.ParameterDescription(
+              name: 'graceMinutes',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['planning'] as _i1oqgc9d.PlanningEndpoint)
+                  .prepareSafetyPlan(
+                    session,
+                    params['tripType'],
+                    params['description'],
+                    params['checkInAtUtc'],
+                    params['graceMinutes'],
+                  ),
+        ),
         'propose': _is.MethodConnector(
           name: 'propose',
           params: {
@@ -664,6 +785,69 @@ class Endpoints extends _is.EndpointDispatch {
       name: 'trip',
       endpoint: endpoints['trip']!,
       methodConnectors: {
+        'startJourney': _is.MethodConnector(
+          name: 'startJourney',
+          params: {
+            'request': _is.ParameterDescription(
+              name: 'request',
+              type: _is.getType<_imkic0vl.JourneyRequest>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['trip'] as _iwmjb5fq.TripEndpoint).startJourney(
+                    session,
+                    params['request'],
+                  ),
+        ),
+        'extendJourney': _is.MethodConnector(
+          name: 'extendJourney',
+          params: {
+            'tripId': _is.ParameterDescription(
+              name: 'tripId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'minutes': _is.ParameterDescription(
+              name: 'minutes',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['trip'] as _iwmjb5fq.TripEndpoint).extendJourney(
+                    session,
+                    params['tripId'],
+                    params['minutes'],
+                  ),
+        ),
+        'requestHelp': _is.MethodConnector(
+          name: 'requestHelp',
+          params: {
+            'tripId': _is.ParameterDescription(
+              name: 'tripId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['trip'] as _iwmjb5fq.TripEndpoint).requestHelp(
+                    session,
+                    params['tripId'],
+                  ),
+        ),
         'getActiveTrip': _is.MethodConnector(
           name: 'getActiveTrip',
           params: {},

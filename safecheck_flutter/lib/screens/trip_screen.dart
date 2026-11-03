@@ -15,9 +15,9 @@ import '../reminders/reminder_feedback.dart';
 import '../util/errors.dart';
 import '../util/format.dart';
 import '../widgets/state_views.dart';
-import '../widgets/start_trip_form.dart';
+import '../widgets/companion_journey_form.dart';
+import '../widgets/safety_plan_card.dart';
 import '../widgets/trip_completion_notice.dart';
-import '../widgets/ai_trip_form.dart';
 
 /// Home tab: start a trip, or follow the active trip and check in.
 class TripScreen extends StatefulWidget {
@@ -47,9 +47,9 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
   /// Server clock minus device clock, so the countdown follows the server.
   Duration _clockOffset = Duration.zero;
   List<TrustedContact> _contacts = const [];
-  bool _aiAvailable = false;
-  bool _useAiPlanner = true;
-  bool _setupBusy = false;
+  bool? _aiAvailable;
+  bool _checkingAi = false;
+  String? _aiAvailabilityMessage;
 
   bool _checkingIn = false;
   CheckInReminderMode _reminderMode = CheckInReminderMode.silent;
@@ -79,6 +79,42 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     dataRevision.addListener(_onDataChanged);
     _load();
+    unawaited(_checkAiAvailability());
+  }
+
+  Future<void> _checkAiAvailability() async {
+    if (_checkingAi) return;
+    _checkingAi = true;
+    if (mounted) {
+      setState(() {
+        _aiAvailable = null;
+        _aiAvailabilityMessage = null;
+      });
+    }
+    try {
+      final available = await client.planning.isAvailable().timeout(
+        const Duration(seconds: 20),
+      );
+      if (mounted) {
+        setState(() {
+          _aiAvailable = available;
+          _aiAvailabilityMessage = available
+              ? null
+              : 'The server reports no usable Meta key. AI actions remain visible so you can retry; manual setup works.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _aiAvailable = null;
+          _aiAvailabilityMessage = e is TimeoutException
+              ? 'The AI availability check timed out. Retry the connection, or enter journey details manually.'
+              : friendlyError(e);
+        });
+      }
+    } finally {
+      _checkingAi = false;
+    }
   }
 
   @override
@@ -111,10 +147,6 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
       final results = await Future.wait([
         client.trip.getActiveTrip(),
         client.contact.list(),
-        client.planning
-            .isAvailable()
-            .timeout(const Duration(seconds: 5), onTimeout: () => false)
-            .catchError((_) => false),
       ]);
       final snapshot = results[0] as TripSnapshot;
       final contacts = results[1] as List<TrustedContact>;
@@ -135,7 +167,6 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
           _reminderGate.cancel(previous!.id!);
         }
         _contacts = contacts;
-        _aiAvailable = results[2] as bool;
         if (ended != null) _endedTrip = ended;
         _loading = false;
         _loadError = null;
@@ -173,7 +204,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     setState(() {});
     // Once the deadline passes, ask the server what happened. Retry every
     // 10 seconds until the server reports the trip as ended.
-    if (!_serverNow.isBefore(trip.deadline)) {
+    if (!_serverNow.isBefore(trip.alertAt ?? trip.deadline)) {
       final last = _lastDeadlineRefresh;
       if (last == null ||
           DateTime.now().difference(last) > const Duration(seconds: 10)) {
@@ -202,29 +233,93 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     if (_trip == null) notifyDataChanged();
   }
 
-  Future<void> _startTrip(
-    TripType type,
-    String description,
-    int minutes,
-    CheckInReminderMode reminderMode,
-    LocationSharing sharing,
-  ) async {
-    await _startConfirmedTrip(
-      () => client.trip.startTrip(type, description, minutes, sharing),
-      reminderMode,
+  Future<void> _startJourney(JourneyRequest request) => _startConfirmedTrip(
+    () => client.trip.startJourney(request),
+    CheckInReminderMode.silent,
+  );
+
+  Future<void> _extendJourney() async {
+    final trip = _trip;
+    if (trip == null) return;
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Extend your journey'),
+        children: [
+          for (final m in [5, 15, 30, 60])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, m),
+              child: Text('Add $m minutes'),
+            ),
+        ],
+      ),
     );
+    if (minutes == null || !mounted) return;
+    setState(() => _checkingIn = true);
+    try {
+      final result = await client.trip.extendJourney(trip.id!, minutes);
+      if (!mounted) return;
+      setState(() {
+        _trip = result.trip;
+        _clockOffset = result.serverTime.difference(DateTime.now().toUtc());
+        _reminderGate.cancel(trip.id!);
+      });
+      _syncTicker();
+      notifyDataChanged();
+      showSnack(context, 'Journey extended. Check the updated deadline.');
+    } catch (e) {
+      if (mounted) showSnack(context, friendlyError(e), error: true);
+      await _load(silent: true);
+    } finally {
+      if (mounted) setState(() => _checkingIn = false);
+    }
   }
 
-  Future<void> _startPlannedTrip(
-    TripType type,
-    String description,
-    DateTime deadline,
-    CheckInReminderMode reminderMode,
-    LocationSharing sharing,
-  ) => _startConfirmedTrip(
-    () => client.trip.startPlannedTrip(type, description, deadline, sharing),
-    reminderMode,
-  );
+  Future<void> _requestHelp() async {
+    final trip = _trip;
+    if (trip == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Request help from your contacts?'),
+        content: const Text(
+          'This creates an incident now and queues messages using the configured delivery mode. It does not contact emergency services. Simulated messages are not sent.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Create help request'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _checkingIn = true);
+    try {
+      final result = await client.trip.requestHelp(trip.id!);
+      if (!mounted) return;
+      setState(() {
+        _trip = null;
+        _endedTrip = result.endedTrip;
+        _checkingIn = false;
+        _reminderGate.cancel(trip.id!);
+      });
+      _syncTicker();
+      _stopLocationTracking();
+      notifyDataChanged();
+      widget.onOpenAlerts();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _checkingIn = false);
+        showSnack(context, friendlyError(e), error: true);
+      }
+      await _load(silent: true);
+    }
+  }
 
   Future<void> _startConfirmedTrip(
     Future<TripSnapshot> Function() start,
@@ -246,7 +341,6 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
       _reminderMode = reminderMode;
       _endedTrip = null;
       _lastDeadlineRefresh = null;
-      _setupBusy = false;
     });
     _syncTicker();
     _evaluateReminder();
@@ -330,6 +424,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                   if (_endedTrip != null && _trip == null) ...[
                     TripCompletionNotice(
                       status: _endedTrip!.status,
+                      helpRequested: _endedTrip!.helpRequestedAt != null,
                       onOpenAlerts: widget.onOpenAlerts,
                       onDismiss: () => setState(() => _endedTrip = null),
                     ),
@@ -350,58 +445,31 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                           _reminderGate.isVisibleFor(_trip!.id!) &&
                           _serverNow.isBefore(_trip!.deadline),
                       onCheckIn: _checkIn,
+                      onExtend: _extendJourney,
+                      onRequestHelp: _requestHelp,
                     )
-                  else ...[
-                    if (_aiAvailable) ...[
-                      SegmentedButton<bool>(
-                        segments: const [
-                          ButtonSegment(
-                            value: true,
-                            label: Text('Describe with AI'),
-                            icon: Icon(Icons.auto_awesome_outlined),
+                  else
+                    CompanionJourneyForm(
+                      contacts: _contacts,
+                      loadContacts: () => client.contact.list(),
+                      serverNow: () => _serverNow,
+                      propose: (text, history) =>
+                          client.planning.propose(text, history),
+                      preparePlan: (type, description, deadline, grace) =>
+                          client.planning.prepareSafetyPlan(
+                            type,
+                            description,
+                            deadline,
+                            grace,
                           ),
-                          ButtonSegment(
-                            value: false,
-                            label: Text('Manual'),
-                            icon: Icon(Icons.edit_outlined),
-                          ),
-                        ],
-                        selected: {_useAiPlanner},
-                        onSelectionChanged: _setupBusy
-                            ? null
-                            : (v) => setState(() => _useAiPlanner = v.single),
-                      ),
-                      const SizedBox(height: 20),
-                    ] else ...[
-                      const Text(
-                        'AI planning is unavailable. Manual trip setup still works.',
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (_aiAvailable && _useAiPlanner)
-                      AiTripForm(
-                        propose: (input, history) =>
-                            client.planning.propose(input, history),
-                        loadContacts: () => client.contact.list(),
-                        serverNow: () => _serverNow,
-                        onOpenContacts: widget.onOpenContacts,
-                        onUseManual: () =>
-                            setState(() => _useAiPlanner = false),
-                        onBusyChanged: (busy) =>
-                            setState(() => _setupBusy = busy),
-                        onStart: _startPlannedTrip,
-                      )
-                    else
-                      StartTripForm(
-                        contacts: _contacts,
-                        loadContacts: () => client.contact.list(),
-                        serverNow: () => _serverNow,
-                        onOpenContacts: widget.onOpenContacts,
-                        onStart: _startTrip,
-                        onBusyChanged: (busy) =>
-                            setState(() => _setupBusy = busy),
-                      ),
-                  ],
+                      onStart: _startJourney,
+                      onOpenContacts: widget.onOpenContacts,
+                      onBusyChanged: (_) {},
+                      aiAvailable: _aiAvailable,
+                      availabilityMessage: _aiAvailabilityMessage,
+                      onRetryAvailability: () =>
+                          unawaited(_checkAiAvailability()),
+                    ),
                 ],
               ),
             ),
@@ -419,6 +487,8 @@ class _ActiveTripView extends StatelessWidget {
     required this.checkingIn,
     required this.reminder,
     required this.onCheckIn,
+    required this.onExtend,
+    required this.onRequestHelp,
   });
 
   final Trip trip;
@@ -426,13 +496,17 @@ class _ActiveTripView extends StatelessWidget {
   final bool checkingIn;
   final bool reminder;
   final VoidCallback onCheckIn;
+  final VoidCallback onExtend;
+  final VoidCallback onRequestHelp;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final remaining = trip.deadline.difference(serverNow);
+    final nominalRemaining = trip.deadline.difference(serverNow);
+    final remaining = (trip.alertAt ?? trip.deadline).difference(serverNow);
     final overdue = remaining <= Duration.zero;
+    final inGrace = !overdue && nominalRemaining <= Duration.zero;
     final total = trip.deadline.difference(trip.startedAt).inSeconds;
     final progress = total <= 0
         ? 1.0
@@ -451,7 +525,11 @@ class _ActiveTripView extends StatelessWidget {
                 Row(
                   children: [
                     _StatusPill(
-                      label: overdue ? 'Deadline passed' : 'Trip active',
+                      label: overdue
+                          ? 'Alert time passed'
+                          : inGrace
+                          ? 'Grace period'
+                          : 'Trip active',
                       color: overdue ? colors.error : colors.primary,
                     ),
                     const Spacer(),
@@ -482,7 +560,11 @@ class _ActiveTripView extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       Text(
-                        overdue ? 'time is up' : 'left to check in',
+                        overdue
+                            ? 'time is up'
+                            : inGrace
+                            ? 'grace left before an alert'
+                            : 'left until alert time',
                         style: text.bodyLarge,
                         textAlign: TextAlign.center,
                       ),
@@ -607,6 +689,29 @@ class _ActiveTripView extends StatelessWidget {
               label: Text(checkingIn ? 'Checking in…' : "I'm safe"),
             ),
           ),
+        const SizedBox(height: 12),
+        if (!overdue)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: checkingIn ? null : onExtend,
+                icon: const Icon(Icons.more_time),
+                label: const Text('Extend journey'),
+              ),
+              OutlinedButton.icon(
+                onPressed: checkingIn ? null : onRequestHelp,
+                icon: const Icon(Icons.support_agent),
+                label: const Text('Request help'),
+              ),
+            ],
+          ),
+        if (trip.graceMinutes > 0)
+          Text(
+            'Check-in deadline: ${formatSastDateTime(context, trip.deadline)}. Alert time after grace: ${formatSastDateTime(context, trip.alertAt ?? trip.deadline)}.',
+          ),
+        SafetyPlanCard(planJson: trip.safetyPlanJson, atStart: true),
         const SizedBox(height: 24),
         Text('Contacts for this trip', style: text.titleMedium),
         const SizedBox(height: 4),

@@ -1,0 +1,19 @@
+### Link credentials are hashed at rest. Explicit consent is needed to resolve.
+class: IncidentAccess
+table: incident_access
+serverOnly: true
+fields:
+  tokenHash: String
+  ownerId: String
+  alertId: int
+  contactName: String
+  canResolve: bool
+  trackingUrl: String?
+  createdAt: DateTime
+  expiresAt: DateTime
+indexes:
+  incident_access_token_idx:
+    fields: tokenHash
+    unique: true
+  incident_access_alert_idx:
+    fields: alertId

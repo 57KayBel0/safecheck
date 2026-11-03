@@ -44,6 +44,7 @@ class _Client extends Client {
       case 'contact.list':
         result = [
           TrustedContact(
+            id: 1,
             ownerId: 'owner',
             name: 'Naledi',
             phoneNumber: '+27820000000',
@@ -62,22 +63,36 @@ class _Client extends Client {
               .toIso8601String(),
           'questions': <String>[],
         });
-      case 'trip.startPlannedTrip':
+      case 'planning.prepareSafetyPlan':
+        result = jsonEncode({
+          'source': 'meta',
+          'checkInAdvice': 'Use the confirmed check-in time.',
+          'precautions': ['Check your transport details.'],
+          'uncertainties': ['This does not predict danger.'],
+        });
+      case 'trip.startJourney':
+        final request = args['request'] as JourneyRequest;
         starts++;
-        startArguments = args;
+        startArguments = {
+          'checkInAtUtc': request.checkInAtUtc,
+          'locationSharing': request.locationSharing,
+        };
         activeTrip = Trip(
           id: 42,
           ownerId: 'owner',
-          tripType: args['tripType'] as TripType,
-          description: args['description'] as String,
+          tripType: request.tripType,
+          description: request.description,
           durationMinutes: 45,
           startedAt: now,
-          deadline: args['checkInAtUtc'] as DateTime,
+          deadline: request.checkInAtUtc,
           status: TripStatus.active,
           contacts: [
             ContactSnapshot(name: 'Naledi', phoneNumber: '+27820000000'),
           ],
-          locationSharing: args['locationSharing'] as LocationSharing,
+          locationSharing: request.locationSharing,
+          companionMode: true,
+          graceMinutes: request.graceMinutes,
+          safetyPlanJson: request.safetyPlanJson,
         );
         if (loseStartReply) {
           throw StateError('Synthetic connection loss after commit');
@@ -114,6 +129,8 @@ void main() {
   }
 
   Future<void> tap(WidgetTester tester, String label) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text(label));
     await tester.pumpAndSettle();
     await tester.tap(find.text(label));
@@ -122,19 +139,13 @@ void main() {
 
   Future<void> planAndReview(WidgetTester tester) async {
     await tester.enterText(
-      find.byKey(const Key('ai-trip-input')),
+      find.byKey(const Key('journey-ai-input')),
       'Taxi home in 45 minutes',
     );
-    await tap(tester, 'Prepare my draft');
+    await tap(tester, 'Interpret journey');
     expect(client.starts, 0);
-    await tap(tester, 'Review AI draft');
+    await tap(tester, 'Review safety journey');
     expect(client.starts, 0);
-    expect(
-      tester
-          .widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>))
-          .onSelectionChanged,
-      isNull,
-    );
   }
 
   testWidgets(
@@ -150,7 +161,7 @@ void main() {
       );
       expect(client.startArguments!['locationSharing'], LocationSharing.off);
       expect(find.text('Trip active'), findsOneWidget);
-      expect(find.byKey(const Key('ai-trip-input')), findsNothing);
+      expect(find.byKey(const Key('journey-ai-input')), findsNothing);
       expect(client.calls.where((c) => c.startsWith('location.')), isEmpty);
       await tester.pumpWidget(const SizedBox());
     },
@@ -178,18 +189,15 @@ void main() {
   ) async {
     client.available = false;
     await show(tester);
-    expect(find.text('Start a trip'), findsOneWidget);
-    expect(
-      find.text('AI planning is unavailable. Manual trip setup still works.'),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key('ai-trip-input')), findsNothing);
+    expect(find.text('Journey details'), findsOneWidget);
+    expect(find.textContaining('The server reports'), findsOneWidget);
+    expect(find.byKey(const Key('journey-ai-input')), findsOneWidget);
     expect(client.starts, 0);
     await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets(
-    'the AI/manual selector fits a narrow screen with enlarged text',
+    'the companion journey form fits a narrow screen with enlarged text',
     (tester) async {
       tester.view.physicalSize = const Size(360, 1000);
       tester.view.devicePixelRatio = 1;
@@ -197,8 +205,9 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await show(tester, textScale: 1.5);
       expect(tester.takeException(), isNull);
-      await tap(tester, 'Manual');
-      expect(find.text('Start a trip'), findsOneWidget);
+      await tester.ensureVisible(find.text('Review safety journey'));
+      await tester.pumpAndSettle();
+      expect(find.text('Journey details'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
