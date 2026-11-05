@@ -9,6 +9,7 @@ import 'src/cache_busting.dart';
 import 'src/generated/serverpod.dart';
 import 'src/messaging/bulk_sms_message_sender.dart';
 import 'src/messaging/message_dispatcher.dart';
+import 'src/messaging/twilio_whatsapp_message_sender.dart';
 import 'src/trips/trip_service.dart';
 import 'src/companion/incident_page_route.dart';
 import 'src/web/routes/app_config_route.dart';
@@ -26,6 +27,14 @@ void run(List<String> args) async {
     mode: pod.getPassword('bulkSmsMode'),
     tokenId: pod.getPassword('bulkSmsTokenId'),
     tokenSecret: pod.getPassword('bulkSmsTokenSecret'),
+  );
+  MessageDispatcher.sender = twilioSandboxSenderForConfig(
+    fallback: MessageDispatcher.sender,
+    mode: pod.getPassword('twilioWhatsAppMode'),
+    accountSid: pod.getPassword('twilioAccountSid'),
+    authToken: pod.getPassword('twilioAuthToken'),
+    from: pod.getPassword('twilioWhatsAppFrom'),
+    recipients: pod.getPassword('twilioWhatsAppSandboxRecipients'),
   );
 
   // Initialize authentication services for the server.

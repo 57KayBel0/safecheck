@@ -18,6 +18,8 @@ import '../widgets/state_views.dart';
 import '../widgets/companion_journey_form.dart';
 import '../widgets/safety_plan_card.dart';
 import '../widgets/trip_completion_notice.dart';
+import '../widgets/safety_design.dart';
+import '../widgets/journey_overview.dart';
 
 /// Home tab: start a trip, or follow the active trip and check in.
 class TripScreen extends StatefulWidget {
@@ -417,10 +419,16 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
         children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
+              constraints: const BoxConstraints(maxWidth: 1000),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_trip == null || MediaQuery.sizeOf(context).width >= 1000)
+                    JourneyOverview(
+                      trip: _trip,
+                      contacts: _contacts,
+                      onOpenContacts: widget.onOpenContacts,
+                    ),
                   if (_endedTrip != null && _trip == null) ...[
                     TripCompletionNotice(
                       status: _endedTrip!.status,
@@ -449,26 +457,32 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                       onRequestHelp: _requestHelp,
                     )
                   else
-                    CompanionJourneyForm(
-                      contacts: _contacts,
-                      loadContacts: () => client.contact.list(),
-                      serverNow: () => _serverNow,
-                      propose: (text, history) =>
-                          client.planning.propose(text, history),
-                      preparePlan: (type, description, deadline, grace) =>
-                          client.planning.prepareSafetyPlan(
-                            type,
-                            description,
-                            deadline,
-                            grace,
-                          ),
-                      onStart: _startJourney,
-                      onOpenContacts: widget.onOpenContacts,
-                      onBusyChanged: (_) {},
-                      aiAvailable: _aiAvailable,
-                      availabilityMessage: _aiAvailabilityMessage,
-                      onRetryAvailability: () =>
-                          unawaited(_checkAiAvailability()),
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 720),
+                        child: CompanionJourneyForm(
+                          contacts: _contacts,
+                          loadContacts: () => client.contact.list(),
+                          serverNow: () => _serverNow,
+                          propose: (text, history) =>
+                              client.planning.propose(text, history),
+                          preparePlan: (type, description, deadline, grace) =>
+                              client.planning.prepareSafetyPlan(
+                                type,
+                                description,
+                                deadline,
+                                grace,
+                              ),
+                          onStart: _startJourney,
+                          onOpenContacts: widget.onOpenContacts,
+                          onBusyChanged: (_) {},
+                          aiAvailable: _aiAvailable,
+                          availabilityMessage: _aiAvailabilityMessage,
+                          onRetryAvailability: () =>
+                              unawaited(_checkAiAvailability()),
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -522,7 +536,10 @@ class _ActiveTripView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     _StatusPill(
                       label: overdue
@@ -532,53 +549,29 @@ class _ActiveTripView extends StatelessWidget {
                           : 'Trip active',
                       color: overdue ? colors.error : colors.primary,
                     ),
-                    const Spacer(),
-                    Icon(tripTypeIcon(trip.tripType), color: colors.primary),
-                    const SizedBox(width: 6),
-                    Text(tripTypeLabel(trip.tripType), style: text.labelLarge),
+                    SafetyTag(
+                      label: tripTypeLabel(trip.tripType),
+                      icon: tripTypeIcon(trip.tripType),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(trip.description, style: text.titleMedium),
+                Text(trip.description, style: text.titleLarge),
                 const SizedBox(height: 24),
                 Semantics(
                   label: overdue
                       ? 'Deadline passed'
                       : describeCountdown(remaining),
                   excludeSemantics: true,
-                  child: Column(
-                    children: [
-                      Text(
-                        overdue ? '00:00' : formatCountdown(remaining),
-                        style: text.displayMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                          color: overdue || urgent
-                              ? colors.error
-                              : colors.onSurface,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      Text(
-                        overdue
-                            ? 'time is up'
-                            : inGrace
-                            ? 'grace left before an alert'
-                            : 'left until alert time',
-                        style: text.bodyLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    color: overdue || urgent ? colors.error : colors.primary,
-                    semanticsLabel: 'Trip progress',
+                  child: JourneyCountdown(
+                    value: overdue ? '00:00' : formatCountdown(remaining),
+                    progress: progress,
+                    urgent: overdue || urgent,
+                    caption: overdue
+                        ? 'time is up'
+                        : inGrace
+                        ? 'grace left before an alert'
+                        : 'left until alert time',
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -604,11 +597,6 @@ class _ActiveTripView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-
-        if (trip.locationSharing != LocationSharing.off) ...[
-          _LiveTripMap(trip: trip),
-          const SizedBox(height: 16),
-        ],
 
         if (reminder && !overdue) ...[
           Card(
@@ -702,11 +690,39 @@ class _ActiveTripView extends StatelessWidget {
               ),
               OutlinedButton.icon(
                 onPressed: checkingIn ? null : onRequestHelp,
-                icon: const Icon(Icons.support_agent),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.error,
+                  side: BorderSide(color: colors.error),
+                  backgroundColor: colors.errorContainer.withValues(alpha: 0.3),
+                ),
+                icon: const Icon(Icons.sos_rounded),
                 label: const Text('Request help'),
               ),
             ],
           ),
+        const SizedBox(height: 20),
+        if (trip.locationSharing != LocationSharing.off) ...[
+          _LiveTripMap(trip: trip),
+          const SizedBox(height: 16),
+        ] else ...[
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
+              ),
+              leading: Icon(
+                Icons.location_off_outlined,
+                color: colors.onSurfaceVariant,
+              ),
+              title: const Text('Location sharing is off'),
+              subtitle: const Text(
+                'This journey does not collect or share your location.',
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         if (trip.graceMinutes > 0)
           Text(
             'Check-in deadline: ${formatSastDateTime(context, trip.deadline)}. Alert time after grace: ${formatSastDateTime(context, trip.alertAt ?? trip.deadline)}.',
@@ -1094,20 +1110,6 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: color,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
+    return SafetyTag(label: label, color: color);
   }
 }

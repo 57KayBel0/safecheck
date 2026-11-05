@@ -8,6 +8,7 @@ import '../common/validation.dart';
 import '../generated/protocol.dart';
 import '../generated/future_calls.dart';
 import '../planning/planning_service.dart';
+import '../planning/meta_trip_planner.dart';
 import '../trips/trip_service.dart' show formatSast, tripTypeLabel;
 import 'companion_ai.dart';
 import 'safety_plan_service.dart';
@@ -181,7 +182,11 @@ abstract final class IncidentService {
             a.briefStatus.equals(BriefStatus.processing) &
             a.resolvedAt.equals(null),
       );
-    } catch (_) {
+    } catch (error) {
+      final reason = error is TripPlanningException
+          ? error.failure.name
+          : 'invalidResponse';
+      session.log('Incident AI fallback: $reason.', level: LogLevel.warning);
       await SafetyAlert.db.updateWhere(
         session,
         columnValues: (a) => [a.briefStatus(BriefStatus.fallback)],

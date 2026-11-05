@@ -330,6 +330,83 @@ void main() {
       },
     );
     test(
+      'reviewed plan survives missed deadline, summary and owner resolution',
+      () async {
+        final r = await request(summary: true, resolution: true);
+        r.safetyPlanJson = await endpoints.planning.prepareSafetyPlan(
+          alice,
+          r.tripType,
+          r.description,
+          r.checkInAtUtc,
+          0,
+        );
+        final trip = (await endpoints.trip.startJourney(alice, r)).trip!;
+        final alert = await miss(trip);
+        final originalFacts = List<String>.of(alert.brief!.facts);
+        final originalUnknowns = List<String>.of(alert.brief!.unknowns);
+        expect(
+          (await endpoints.alert.listMessages(alice)).single.body,
+          contains('/incident/'),
+        );
+        await IncidentService.enrich(builder.build(), alert.id!);
+        final enriched = (await endpoints.alert.listAlerts(alice)).single;
+        expect(enriched.brief!.source, 'meta');
+        expect(enriched.brief!.facts.toSet(), originalFacts.toSet());
+        expect(enriched.brief!.unknowns, originalUnknowns);
+        expect(jsonDecode(trip.safetyPlanJson!)['source'], 'meta');
+        final resolved = await endpoints.alert.resolveIncident(
+          alice,
+          alert.id!,
+          'Fictional traveller confirmed safe.',
+        );
+        expect(resolved.resolvedAt, isNotNull);
+        await endpoints.futureCalls.tripDeadline.processDeadline(
+          builder,
+          trip.id!,
+        );
+        await MessageDispatcher.dispatchPending(
+          builder.build(),
+          alertId: alert.id!,
+        );
+        await IncidentService.enrich(builder.build(), alert.id!);
+        expect(await endpoints.alert.listAlerts(alice), hasLength(1));
+        expect(await endpoints.alert.listMessages(alice), hasLength(1));
+        expect(ai.calls, 2);
+      },
+    );
+    test(
+      'stalled AI cannot block alert creation or owner resolution',
+      () async {
+        final trip = (await endpoints.trip.startJourney(
+          alice,
+          await request(summary: true),
+        )).trip!;
+        final alert = await miss(trip);
+        ai.wait = Completer<Map<String, dynamic>>();
+        final work = IncidentService.enrich(builder.build(), alert.id!);
+        await ai.started.future.timeout(const Duration(seconds: 5));
+        try {
+          expect(await endpoints.alert.listMessages(alice), hasLength(1));
+          final resolved = await endpoints.alert.resolveIncident(
+            alice,
+            alert.id!,
+            'Confirmed safe while AI pending.',
+          );
+          expect(resolved.resolvedAt, isNotNull);
+        } finally {
+          ai.wait!.complete({
+            'overviewFacts': [0],
+            'factOrder': [0],
+            'actionCodes': ['callTraveller'],
+          });
+          await work;
+        }
+        final updated = (await endpoints.alert.listAlerts(alice)).single;
+        expect(updated.resolutionNote, 'Confirmed safe while AI pending.');
+        expect(updated.resolvedAt, isNotNull);
+      },
+    );
+    test(
       'resolution is owner-only, idempotent and skips pending messages',
       () async {
         final trip = (await endpoints.trip.startJourney(

@@ -54,6 +54,15 @@ authentication, delivery integration and tracking remain existing infrastructure
 
 ## Required before a Meta hackathon submission
 
+Final readiness status and manual gates are maintained in
+[SUBMISSION_READINESS.md](SUBMISSION_READINESS.md). Genuine Muse Spark incident
+inference succeeded in 43.303 seconds on fictional data; interactive safety-plan
+latency remains a limitation. Final local checks passed 164 backend tests
+(one real-send test skipped), 95 Flutter tests and analysis with no issues.
+The hosted signed-out page renders, but new companion build parity and its
+authenticated browser flow remain unverified. Repository visibility is private.
+These findings supersede the earlier pending adapter-access verification below.
+
 - Verify a real Meta request and its interpretation using fictional trip data.
   **Mocked tests do not establish live Meta access or interpretation quality.**
   Show a clarification, review and confirmed exact deadline in the live app.
@@ -109,7 +118,7 @@ generated-client wiring, lost-start-reply reconciliation and narrow screens with
 enlarged text. A release web build also succeeded. See the integration pull
 request for results at its latest revision.
 
-Local database verification cannot initialize PostgreSQL under this execution
-environment's root-only process restrictions; CI runs those checks as a normal
-user. Unit/widget tests do not establish live model quality, production SMS
+Current local findings are recorded in
+[the 4 November verification notes](safecheck_server/VERIFICATION_NOV4.md).
+Unit/widget tests do not establish live model quality, production SMS
 delivery or background tracking behavior.

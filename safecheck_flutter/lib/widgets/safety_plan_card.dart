@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'safety_design.dart';
 
 class SafetyPlanCard extends StatelessWidget {
   const SafetyPlanCard({
@@ -21,31 +22,60 @@ class SafetyPlanCard extends StatelessWidget {
     }
     if (plan == null) return const SizedBox.shrink();
     final meta = plan['source'] == 'meta';
+    final theme = Theme.of(context);
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${meta ? 'AI safety plan' : 'Standard safety plan'}${atStart ? ' · at journey start' : ''}',
-              style: Theme.of(context).textTheme.titleMedium,
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Icon(
+                  meta ? Icons.auto_awesome_rounded : Icons.shield_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+                Text(
+                  '${meta ? 'AI safety plan' : 'Standard safety plan'}${atStart ? ' · at journey start' : ''}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SafetyTag(
+                  label: meta ? 'Meta suggestions' : 'Standard guidance',
+                  icon: meta
+                      ? Icons.auto_awesome_outlined
+                      : Icons.menu_book_outlined,
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            Text(plan['checkInAdvice'] as String? ?? ''),
-            for (final step in (plan['precautions'] as List? ?? const []))
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text('• $step'),
-              ),
-            for (final unknown in (plan['uncertainties'] as List? ?? const []))
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  unknown.toString(),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
+            Text(
+              plan['checkInAdvice'] as String? ?? '',
+              style: theme.textTheme.bodyLarge,
+            ),
+            SafetyFactGroup(
+              title: 'Practical precautions',
+              values: (plan['precautions'] as List? ?? const [])
+                  .map((e) => e.toString())
+                  .toList(),
+              icon: Icons.checklist_rounded,
+            ),
+            SafetyFactGroup(
+              title: 'Keep in mind',
+              values: (plan['uncertainties'] as List? ?? const [])
+                  .map((e) => e.toString())
+                  .toList(),
+              icon: Icons.info_outline,
+              tone: theme.colorScheme.secondary,
+            ),
             const SizedBox(height: 8),
             Text(
               meta

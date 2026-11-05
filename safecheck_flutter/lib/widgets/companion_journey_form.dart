@@ -8,6 +8,7 @@ import '../util/format.dart';
 import 'state_views.dart';
 import 'trip_review_dialog.dart';
 import 'safety_plan_card.dart';
+import 'safety_design.dart';
 
 /// The home journey builder. AI may suggest; only confirmed requests act.
 class CompanionJourneyForm extends StatefulWidget {
@@ -287,10 +288,11 @@ class _CompanionJourneyFormState extends State<CompanionJourneyForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Your safety companion', style: text.headlineSmall),
-        const SizedBox(height: 8),
-        const Text(
-          'Plan your journey, choose who can help, and review before starting. SafeCheck monitors your confirmed check-in; AI does not predict danger.',
+        const SafetySectionHeading(
+          eyebrow: 'PLAN WITH INTENTION',
+          title: 'Your safety companion',
+          subtitle:
+              'Plan your journey, choose who can help, and review before starting. SafeCheck monitors your confirmed check-in; AI does not predict danger.',
         ),
         const SizedBox(height: 16),
         Card(
@@ -299,7 +301,22 @@ class _CompanionJourneyFormState extends State<CompanionJourneyForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Describe with AI', style: text.titleMedium),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    Text('Describe with AI', style: text.titleLarge),
+                    const SafetyTag(
+                      label: 'Meta Model API',
+                      icon: Icons.auto_awesome_outlined,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 Text(
                   widget.aiAvailable == true
@@ -349,201 +366,229 @@ class _CompanionJourneyFormState extends State<CompanionJourneyForm> {
                           },
                     child: const Text('New AI conversation'),
                   ),
-                const Text(
+                Text(
                   'Trip text is processed by Meta when you use AI. Contacts and GPS coordinates are not added to planning requests.',
+                  style: text.bodySmall,
                 ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 16),
-        Text('Journey details', style: text.titleLarge),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<TripType>(
-          key: ValueKey(_type),
-          isExpanded: true,
-          initialValue: _type,
-          decoration: const InputDecoration(labelText: 'Transport'),
-          items: [
-            for (final type in TripType.values)
-              DropdownMenuItem(value: type, child: Text(tripTypeLabel(type))),
-          ],
-          onChanged: _busy
-              ? null
-              : (v) {
-                  if (v != null) {
-                    setState(() {
-                      _type = v;
-                      _plan = null;
-                    });
-                  }
-                },
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          key: const Key('journey-description'),
-          controller: _description,
-          enabled: !_busy,
-          maxLength: 200,
-          maxLines: 2,
-          decoration: const InputDecoration(labelText: 'Destination or route'),
-          onChanged: (_) => _changed(),
-        ),
-        Text('Check in within', style: text.titleMedium),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: [
-            for (final m in [2, 15, 30, 45, 60, 120])
-              ChoiceChip(
-                label: Text(formatDurationShort(m)),
-                selected: _absolute == null && _minutes == m,
-                onSelected: _busy
-                    ? null
-                    : (_) {
-                        setState(() {
-                          _minutes = m;
-                          _absolute = null;
-                          _plan = null;
-                        });
-                      },
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text('Check-in: ${formatSastDateTime(context, _deadline)}'),
-        TextButton.icon(
-          onPressed: _busy ? null : _chooseTime,
-          icon: const Icon(Icons.schedule),
-          label: const Text('Choose exact SAST time'),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<int>(
-          isExpanded: true,
-          initialValue: _grace,
-          decoration: const InputDecoration(
-            labelText: 'Grace period after check-in',
-          ),
-          items: [
-            for (final m in [0, 1, 2, 5, 10])
-              DropdownMenuItem(
-                value: m,
-                child: Text(m == 0 ? 'No grace period' : '$m minutes'),
-              ),
-          ],
-          onChanged: _busy
-              ? null
-              : (v) {
-                  if (v != null) {
-                    setState(() {
-                      _grace = v;
-                      _plan = null;
-                    });
-                  }
-                },
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'If no check-in is recorded, alert time is ${formatSastDateTime(context, _deadline.add(Duration(minutes: _grace)))}. You may check in during grace.',
-        ),
-        const SizedBox(height: 16),
-        Text('Trusted contacts for this journey', style: text.titleMedium),
-        if (widget.contacts.isEmpty)
-          const Text('Add a trusted contact before starting.'),
-        for (final contact in widget.contacts)
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(contact.name),
-            subtitle: Text(contact.phoneNumber),
-            value: _selected.contains(contact.id),
-            onChanged: _busy
-                ? null
-                : (v) {
-                    setState(() {
-                      if (v == true && contact.id != null) {
-                        _selected.add(contact.id!);
-                      } else {
-                        _selected.remove(contact.id);
-                      }
-                    });
-                  },
-          ),
-        TextButton(
-          onPressed: _busy ? null : widget.onOpenContacts,
-          child: const Text('Manage contacts'),
-        ),
-        DropdownButtonFormField<LocationSharing>(
-          isExpanded: true,
-          initialValue: _sharing,
-          decoration: const InputDecoration(labelText: 'Location sharing'),
-          items: const [
-            DropdownMenuItem(
-              value: LocationSharing.off,
-              child: Text('Off (default)'),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Journey details', style: text.titleLarge),
+                const SizedBox(height: 6),
+                Text(
+                  'Make it yours. Review everything before you start.',
+                  style: text.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<TripType>(
+                  key: ValueKey(_type),
+                  isExpanded: true,
+                  initialValue: _type,
+                  decoration: const InputDecoration(labelText: 'Transport'),
+                  items: [
+                    for (final type in TripType.values)
+                      DropdownMenuItem(
+                        value: type,
+                        child: Text(tripTypeLabel(type)),
+                      ),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (v) {
+                          if (v != null) {
+                            setState(() {
+                              _type = v;
+                              _plan = null;
+                            });
+                          }
+                        },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const Key('journey-description'),
+                  controller: _description,
+                  enabled: !_busy,
+                  maxLength: 200,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Destination or route',
+                  ),
+                  onChanged: (_) => _changed(),
+                ),
+                Text('Check in within', style: text.titleMedium),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    for (final m in [2, 15, 30, 45, 60, 120])
+                      ChoiceChip(
+                        label: Text(formatDurationShort(m)),
+                        selected: _absolute == null && _minutes == m,
+                        onSelected: _busy
+                            ? null
+                            : (_) {
+                                setState(() {
+                                  _minutes = m;
+                                  _absolute = null;
+                                  _plan = null;
+                                });
+                              },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text('Check-in: ${formatSastDateTime(context, _deadline)}'),
+                TextButton.icon(
+                  onPressed: _busy ? null : _chooseTime,
+                  icon: const Icon(Icons.schedule),
+                  label: const Text('Choose exact SAST time'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  isExpanded: true,
+                  initialValue: _grace,
+                  decoration: const InputDecoration(
+                    labelText: 'Grace period after check-in',
+                  ),
+                  items: [
+                    for (final m in [0, 1, 2, 5, 10])
+                      DropdownMenuItem(
+                        value: m,
+                        child: Text(m == 0 ? 'No grace period' : '$m minutes'),
+                      ),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (v) {
+                          if (v != null) {
+                            setState(() {
+                              _grace = v;
+                              _plan = null;
+                            });
+                          }
+                        },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'If no check-in is recorded, alert time is ${formatSastDateTime(context, _deadline.add(Duration(minutes: _grace)))}. You may check in during grace.',
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Trusted contacts for this journey',
+                  style: text.titleMedium,
+                ),
+                if (widget.contacts.isEmpty)
+                  const Text('Add a trusted contact before starting.'),
+                for (final contact in widget.contacts)
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(contact.name),
+                    subtitle: Text(contact.phoneNumber),
+                    value: _selected.contains(contact.id),
+                    onChanged: _busy
+                        ? null
+                        : (v) {
+                            setState(() {
+                              if (v == true && contact.id != null) {
+                                _selected.add(contact.id!);
+                              } else {
+                                _selected.remove(contact.id);
+                              }
+                            });
+                          },
+                  ),
+                TextButton(
+                  onPressed: _busy ? null : widget.onOpenContacts,
+                  child: const Text('Manage contacts'),
+                ),
+                DropdownButtonFormField<LocationSharing>(
+                  isExpanded: true,
+                  initialValue: _sharing,
+                  decoration: const InputDecoration(
+                    labelText: 'Location sharing',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: LocationSharing.off,
+                      child: Text('Off (default)'),
+                    ),
+                    DropdownMenuItem(
+                      value: LocationSharing.afterAlert,
+                      child: Text('After an alert'),
+                    ),
+                    DropdownMenuItem(
+                      value: LocationSharing.live,
+                      child: Text('Live while the app runs'),
+                    ),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (v) {
+                          if (v != null) setState(() => _sharing = v);
+                        },
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _summaryConsent,
+                  title: const Text('Use Meta for an incident brief'),
+                  subtitle: const Text(
+                    'If an alert is raised, send the journey description, recorded times and location timestamp to Meta. Coordinates and contact details are excluded.',
+                  ),
+                  onChanged: _busy
+                      ? null
+                      : (v) => setState(() => _summaryConsent = v ?? false),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _resolutionConsent,
+                  title: const Text(
+                    'Allow accepted contacts to resolve incidents',
+                  ),
+                  subtitle: const Text(
+                    'Their private incident link grants this permission to anyone holding it. It expires after 48 hours.',
+                  ),
+                  onChanged: _busy
+                      ? null
+                      : (v) => setState(() => _resolutionConsent = v ?? false),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _generatePlan,
+                  icon: const Icon(Icons.shield_outlined),
+                  label: const Text('Create AI safety plan'),
+                ),
+                SafetyPlanCard(planJson: _plan),
+                const SizedBox(height: 8),
+                const Text(
+                  'Silent reminder while the app is open. The server processes deadlines even when the app is closed. Alerts and delivery statuses are separate.',
+                ),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: ErrorBanner(message: _error!),
+                  ),
+                if (_busy && !_reviewing)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: LinearProgressIndicator(),
+                  ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _busy ? null : _review,
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: const Text('Review safety journey'),
+                ),
+              ],
             ),
-            DropdownMenuItem(
-              value: LocationSharing.afterAlert,
-              child: Text('After an alert'),
-            ),
-            DropdownMenuItem(
-              value: LocationSharing.live,
-              child: Text('Live while the app runs'),
-            ),
-          ],
-          onChanged: _busy
-              ? null
-              : (v) {
-                  if (v != null) setState(() => _sharing = v);
-                },
-        ),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          value: _summaryConsent,
-          title: const Text('Use Meta for an incident brief'),
-          subtitle: const Text(
-            'If an alert is raised, send the journey description, recorded times and location timestamp to Meta. Coordinates and contact details are excluded.',
           ),
-          onChanged: _busy
-              ? null
-              : (v) => setState(() => _summaryConsent = v ?? false),
-        ),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          value: _resolutionConsent,
-          title: const Text('Allow accepted contacts to resolve incidents'),
-          subtitle: const Text(
-            'Their private incident link grants this permission to anyone holding it. It expires after 48 hours.',
-          ),
-          onChanged: _busy
-              ? null
-              : (v) => setState(() => _resolutionConsent = v ?? false),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _busy ? null : _generatePlan,
-          icon: const Icon(Icons.shield_outlined),
-          label: const Text('Create AI safety plan'),
-        ),
-        SafetyPlanCard(planJson: _plan),
-        const SizedBox(height: 8),
-        const Text(
-          'Silent reminder while the app is open. The server processes deadlines even when the app is closed. Alerts and delivery statuses are separate.',
-        ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: ErrorBanner(message: _error!),
-          ),
-        if (_busy && !_reviewing)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: LinearProgressIndicator(),
-          ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _busy ? null : _review,
-          icon: const Icon(Icons.fact_check_outlined),
-          label: const Text('Review safety journey'),
         ),
       ],
     );

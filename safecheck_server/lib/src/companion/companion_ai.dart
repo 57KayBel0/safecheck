@@ -2,12 +2,30 @@ import 'dart:async';
 import 'dart:convert';
 
 import '../planning/meta_trip_planner.dart';
+import '../planning/trip_plan_draft.dart' show InvalidTripDraft;
 
 /// A bounded Meta adapter. It cannot read the database or take safety actions.
 class CompanionAi {
-  CompanionAi({required String? apiKey, PlannerTransport? transport})
-    : _key = (apiKey ?? '').trim(),
-      _transport = transport ?? const IoPlannerTransport();
+  CompanionAi({
+    required String? apiKey,
+    PlannerTransport? transport,
+    this.planTimeout = const Duration(seconds: 25),
+    this.incidentTimeout = const Duration(seconds: 45),
+  }) : _key = (apiKey ?? '').trim(),
+       _transport =
+           transport ??
+           const IoPlannerTransport(maxResponseBytes: maxResponseBytes) {
+    for (final timeout in [planTimeout, incidentTimeout]) {
+      if (timeout <= Duration.zero || timeout > const Duration(minutes: 1)) {
+        throw ArgumentError(
+          'AI request timeouts must be positive and at most 60 seconds.',
+        );
+      }
+    }
+  }
+  static const maxResponseBytes = 32768;
+  final Duration planTimeout;
+  final Duration incidentTimeout;
   final String _key;
   final PlannerTransport _transport;
   bool get isConfigured => _key.isNotEmpty && !_key.contains(RegExp(r'[\r\n]'));
@@ -30,7 +48,7 @@ class CompanionAi {
       'precautions': _strings(4),
       'uncertainties': _strings(3),
     },
-    const Duration(seconds: 25),
+    planTimeout,
   );
 
   /// The model selects only indexes into server-owned facts and action codes.
@@ -57,7 +75,7 @@ class CompanionAi {
         'items': {'type': 'string', 'enum': incidentActions.keys.toList()},
       },
     },
-    const Duration(seconds: 8),
+    incidentTimeout,
   );
 
   static Map<String, dynamic> _strings(int max) => {
@@ -119,28 +137,69 @@ class CompanionAi {
             timeout: timeout,
           )
           .timeout(timeout);
-      if (response.statusCode != 200 ||
-          utf8.encode(response.body).length > 32768) {
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const TripPlanningException(
+          PlanningFailure.notConfigured,
+          'Meta access needs checking. Standard guidance remains available.',
+        );
+      }
+      if (response.statusCode == 429) {
+        throw const TripPlanningException(
+          PlanningFailure.rateLimited,
+          'Meta is busy. Standard guidance remains available.',
+        );
+      }
+      if (response.statusCode != 200) {
+        throw const TripPlanningException(
+          PlanningFailure.unavailable,
+          'Meta is unavailable. Standard guidance remains available.',
+        );
+      }
+      if (utf8.encode(response.body).length > maxResponseBytes) {
         throw const FormatException();
       }
-      final envelope = jsonDecode(response.body) as Map<String, dynamic>;
-      final choices = envelope['choices'] as List;
-      if (choices.length != 1) throw const FormatException();
-      final choice = choices.single as Map<String, dynamic>;
-      final message = choice['message'] as Map<String, dynamic>;
+      final envelope = jsonDecode(response.body);
+      if (envelope is! Map<String, dynamic>) throw const FormatException();
+      final choices = envelope['choices'];
+      if (choices is! List || choices.length != 1) {
+        throw const FormatException();
+      }
+      final choice = choices.single;
+      if (choice is! Map<String, dynamic>) throw const FormatException();
+      final message = choice['message'];
+      if (message is! Map<String, dynamic>) throw const FormatException();
+      final tools = message['tool_calls'];
       if (choice['finish_reason'] != 'stop' ||
           message['role'] != 'assistant' ||
           message['refusal'] != null ||
-          ((message['tool_calls'] as List?)?.isNotEmpty ?? false)) {
+          (tools != null && (tools is! List || tools.isNotEmpty)) ||
+          message['content'] is! String) {
         throw const FormatException();
       }
-      final result =
-          jsonDecode(message['content'] as String) as Map<String, dynamic>;
-      if (result.length != properties.length ||
+      final result = jsonDecode(message['content'] as String);
+      if (result is! Map<String, dynamic> ||
+          result.length != properties.length ||
           !result.keys.toSet().containsAll(properties.keys)) {
         throw const FormatException();
       }
       return result;
+    } on TripPlanningException {
+      rethrow;
+    } on TimeoutException {
+      throw const TripPlanningException(
+        PlanningFailure.timedOut,
+        'Meta took too long. Standard guidance remains available.',
+      );
+    } on FormatException {
+      throw const TripPlanningException(
+        PlanningFailure.invalidResponse,
+        'Meta returned an invalid response. Standard guidance remains available.',
+      );
+    } on InvalidTripDraft {
+      throw const TripPlanningException(
+        PlanningFailure.invalidResponse,
+        'Meta returned an invalid response. Standard guidance remains available.',
+      );
     } catch (_) {
       throw const TripPlanningException(
         PlanningFailure.unavailable,

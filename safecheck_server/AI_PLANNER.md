@@ -73,7 +73,7 @@ plan is saved as reviewed input, not as verified information about the world.
 The adapters use `https://api.meta.ai/v1/chat/completions`, strict structured
 output, no tools and no automatic retries. The new plan/brief adapter caps the
 response at 32 KiB and 1200 completion tokens, with a 25-second plan timeout and
-8-second incident timeout. Planning keeps its earlier 64 KiB / 2048-token /
+45-second incident timeout. Planning keeps its earlier 64 KiB / 2048-token /
 30-second bounds. Server errors do not expose keys or raw provider responses.
 
 All AI features share durable per-account limits of five attempts per ten-minute
@@ -114,7 +114,8 @@ behavior. **They do not verify live Meta access, model quality, actual SMS
 delivery or reliable background GPS.** The owner must verify a real request
 with their private deployed key. Use fictional trip/contact data or consented
 test recipients; simulated messages remain labelled **Demo — SMS not sent**.
-WhatsApp is still simulated. BulkSMS live sending requires separate deliberate
+WhatsApp is simulated unless the separate [Twilio Sandbox configuration](WHATSAPP_SANDBOX.md)
+is explicitly enabled. BulkSMS live sending requires separate deliberate
 configuration; provider submission is not confirmed delivery.
 
 1. Describe a journey, clarify its time, and create a safety plan. Confirm the
@@ -133,3 +134,32 @@ Primary API references:
 
 - [Meta Chat Completions](https://dev.meta.ai/docs/protocols/chat-completions)
 - [Meta structured output](https://dev.meta.ai/docs/structured-output)
+
+## Verification update — 4 November 2026
+
+The configured endpoint is `https://api.meta.ai/v1/chat/completions`, model
+`muse-spark-1.3`. A genuine fictional incident-summary inference returned HTTP
+200 in 43.303 seconds, with all supplied facts and unknowns preserved after
+strict validation. The historical eight-second timeout has insufficient timing
+diagnostics to identify its exact phase; this slower successful response shows
+that eight seconds is an inadequate general summary budget.
+
+Incident summaries now use a bounded 45-second request budget. Interactive
+safety plans retain 25 seconds. Constructor overrides must be positive and no
+more than 60 seconds. There are no automatic retries. Responses are capped at
+32 KiB; invalid JSON, refusals, tool calls, malformed envelopes and invalid
+structured output fall back safely. Authentication, throttling, timeout and
+unavailable errors are classified without provider bodies or credentials.
+Alerts and notification dispatch precede asynchronous incident enrichment;
+provider failures leave the factual standard brief and alert intact.
+
+`dart run tool/verify_meta.dart --approve-inference --summary` uses fictional
+data and prints only sanitized validation/timing metadata. The `--plan` variant
+checks planning separately. These commands make genuine provider requests and
+require explicit authorization; ordinary automated tests use mocks.
+
+The genuine safety-plan request separately reached its 25-second timeout
+(25.269 seconds observed, one attempt, no retry). The successful summary
+confirms credentials, model access and response handling; it does not establish
+reliable latency for every interactive request. Standard-plan fallback remains
+necessary for the demo.

@@ -7,6 +7,7 @@ import '../app_events.dart';
 import '../client.dart';
 import '../util/errors.dart';
 import '../widgets/state_views.dart';
+import '../widgets/safety_design.dart';
 import 'alerts_screen.dart';
 import 'about_screen.dart';
 import 'contacts_screen.dart';
@@ -125,9 +126,10 @@ class _AppShellState extends State<AppShell> {
     }
 
     const titles = ['SafeCheck', 'Trusted contacts', 'Trip history', 'Alerts'];
+    final wide = MediaQuery.sizeOf(context).width >= 1000;
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_tab]),
+        title: _tab == 0 ? const BrandMark() : Text(titles[_tab]),
         actions: [
           PopupMenuButton<String>(
             tooltip: 'Account',
@@ -240,46 +242,144 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: IndexedStack(
-          index: _tab,
-          children: [
-            TripScreen(
-              onOpenContacts: () => setState(() => _tab = 1),
-              onOpenAlerts: () => setState(() => _tab = 3),
-            ),
-            const ContactsScreen(),
-            const HistoryScreen(),
-            const AlertsScreen(),
-          ],
+      body: SafetyBackdrop(
+        child: SafeArea(
+          child: Row(
+            children: [
+              if (wide)
+                Container(
+                  width: 224,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border(
+                      right: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 28, 24, 12),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'YOUR SPACE',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.copyWith(letterSpacing: 2),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: NavigationRail(
+                          extended: true,
+                          minExtendedWidth: 223,
+                          selectedIndex: _tab,
+                          onDestinationSelected: (index) {
+                            setState(() => _tab = index);
+                            notifyDataChanged();
+                          },
+                          destinations: const [
+                            NavigationRailDestination(
+                              icon: Icon(Icons.space_dashboard_outlined),
+                              selectedIcon: Icon(Icons.space_dashboard_rounded),
+                              label: Text('Trip'),
+                            ),
+                            NavigationRailDestination(
+                              icon: Icon(Icons.people_outline),
+                              selectedIcon: Icon(Icons.people),
+                              label: Text('Contacts'),
+                            ),
+                            NavigationRailDestination(
+                              icon: Icon(Icons.history),
+                              label: Text('History'),
+                            ),
+                            NavigationRailDestination(
+                              icon: Icon(Icons.notifications_outlined),
+                              selectedIcon: Icon(Icons.notifications),
+                              label: Text('Alerts'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.lock_outline_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Your journey.\nYour choices.',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1240),
+                    child: IndexedStack(
+                      index: _tab,
+                      children: [
+                        TripScreen(
+                          onOpenContacts: () => setState(() => _tab = 1),
+                          onOpenAlerts: () => setState(() => _tab = 3),
+                        ),
+                        const ContactsScreen(),
+                        const HistoryScreen(),
+                        const AlertsScreen(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (index) {
-          setState(() => _tab = index);
-          // Make sure the newly shown tab reflects the latest server state.
-          notifyDataChanged();
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.shield_outlined),
-            selectedIcon: Icon(Icons.shield),
-            label: 'Trip',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Contacts',
-          ),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications),
-            label: 'Alerts',
-          ),
-        ],
-      ),
+      bottomNavigationBar: wide
+          ? null
+          : NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (index) {
+                setState(() => _tab = index);
+                // Make sure the newly shown tab reflects the latest server state.
+                notifyDataChanged();
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.shield_outlined),
+                  selectedIcon: Icon(Icons.shield),
+                  label: 'Trip',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.people_outline),
+                  selectedIcon: Icon(Icons.people),
+                  label: 'Contacts',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.history),
+                  label: 'History',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.notifications_outlined),
+                  selectedIcon: Icon(Icons.notifications),
+                  label: 'Alerts',
+                ),
+              ],
+            ),
     );
   }
 }

@@ -1,4 +1,4 @@
-# SafeCheck
+# SafeCheck AI
 
 SafeCheck is a personal safety prototype for people travelling in South Africa
 who want a check-in deadline and a small circle of trusted contacts. Start a
@@ -82,7 +82,11 @@ contacts may resolve only when the traveller explicitly grants that permission
 for the journey. Resolution stops pending messages, not messages already claimed
 or submitted to a provider.
 
-Live Meta access still needs verification with the owner's private server key.
+Genuine `muse-spark-1.3` incident-summary inference was verified on 4 November:
+HTTP 200 in 43.303 seconds, with all supplied facts and unknowns preserved.
+The summary budget is 45 seconds; a separate safety-plan request timed out at
+25 seconds. Standard fallback remains necessary. This verifies the adapter,
+not the deployed UI or reliable model latency.
 See [AI_PLANNER.md](safecheck_server/AI_PLANNER.md) for contracts, deployment and
 a three-minute demonstration. Voice, multilingual and guaranteed background
 tracking are outside this implementation.
@@ -152,6 +156,9 @@ verification/recovery codes are written to server logs; keep those logs private.
 The web app discovers Google readiness from the server; a build flag alone
 does not establish that Google login works. The production callback is
 `https://safecheck.serverpod.space/auth.html`. OAuth secrets stay server-side.
+Google authentication is currently development-only: the downloaded credentials
+register the local callback, not the production callback. Local browser sign-in
+remains unverified; use the working email-login flow for the hackathon demo.
 Cloud provisions platform-managed database, JWT and email authentication
 passwords; do not replace them with sample values. Use the supported password
 `--from-file` workflow described in `CLOUD_DEPLOYMENT.md` for private imports.
@@ -166,7 +173,8 @@ hostname. Existing tokens and persisted messages are not automatically rewritten
 
 The default sender simulates delivery. The UI labels simulated SMS exactly
 **Demo — SMS not sent**. An alert or simulated message does not mean a contact
-was notified. **WhatsApp remains simulated**, including with live SMS enabled.
+was notified. WhatsApp is simulated unless the separate
+[Twilio Sandbox configuration](safecheck_server/WHATSAPP_SANDBOX.md) is enabled.
 
 Real BulkSMS submission requires `bulkSmsMode: live` and both nonempty API
 credentials on the server. Credentials alone do not enable it. Keep mode
@@ -185,6 +193,11 @@ dart format --output=none --set-exit-if-changed safecheck_server/lib safecheck_s
 ```
 
 Backend tests use Serverpod's managed test database, not Docker:
+
+The private `config/passwords.yaml` also needs a separate `test:` mapping with
+a `database` password. Keep existing development/authentication values intact.
+A missing test-mode database password can terminate Serverpod test construction
+before the test harness displays the configuration error.
 
 ```powershell
 Set-Location safecheck_server
@@ -226,6 +239,31 @@ testing through the existing Serverpod MCP workflow.
   review. The public privacy policy is a draft, not a compliance guarantee.
 
 ## Hackathon submission
+
+The [three-minute demo runbook](HACKATHON_DEMO.md) includes a recording script,
+preflight checks and honest provider-status narration. Do not send real
+WhatsApp messages as part of recording: this account's Limited Trial supports
+only a separate generic template connectivity probe, not full safety alerts.
+
+Verified local results: **164 backend tests passed, one real-send test skipped;
+95 Flutter tests passed; Dart analysis found no issues**. Automated tests do
+not replace a browser walkthrough of the intended submission build.
+
+The [submission readiness report](SUBMISSION_READINESS.md) records browser,
+dependency, repository and remaining manual checks. The submission branch is
+[`codex/safecheck-trip-review-nov2`](https://github.com/57KayBel0/safecheck/tree/codex/safecheck-trip-review-nov2).
+The repository was private at verification; visibility has not been changed.
+
+### Existing project versus hackathon contributions
+
+Baseline `2d7a2e2c5c719b6973f3c9c17b3271de1e274ea4` already contained
+authentication, contacts/invitations, trip scheduling, tracking and messaging
+infrastructure. Hackathon work adds Meta drafts and clarification, explicit
+review/confirmation, grounded safety plans, durable AI quotas, selected-contact
+and grace options, companion actions, factual incident briefs with optional
+Meta organization, consented incident links and resolution. Provider timeout
+hardening and Limited Trial separation were added during final verification.
+See [HACKATHON_NOTES.md](HACKATHON_NOTES.md) for the detailed contribution record.
 
 See [HACKATHON_NOTES.md](HACKATHON_NOTES.md) for the scope of the current
 improvements and outstanding Meta-model integration and submission work.

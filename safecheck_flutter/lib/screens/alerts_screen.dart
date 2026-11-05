@@ -11,6 +11,7 @@ import '../widgets/copy_tracking_link_button.dart';
 import '../widgets/demo_notice.dart';
 import '../widgets/state_views.dart';
 import '../widgets/incident_brief_card.dart';
+import '../widgets/safety_design.dart';
 
 /// Alerts raised for missed check-ins and their message statuses.
 class AlertsScreen extends StatefulWidget {
@@ -151,34 +152,64 @@ class _AlertsScreenState extends State<AlertsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'Incident center',
-            style: Theme.of(context).textTheme.headlineSmall,
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 920),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SafetySectionHeading(
+                    eyebrow: 'CLARITY WHEN IT MATTERS',
+                    title: 'Incident center',
+                    subtitle:
+                        'Recorded facts, message statuses and the next steps you control. A missed check-in is not proof of danger.',
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      SafetyTag(
+                        label:
+                            '${alerts.where((a) => a.resolvedAt == null).length} open',
+                        icon: Icons.info_outline,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      SafetyTag(
+                        label:
+                            '${alerts.where((a) => a.resolvedAt != null).length} resolved',
+                        icon: Icons.task_alt_rounded,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const MessageStatusBanner(),
+                  const SizedBox(height: 16),
+                  if (alerts.isEmpty)
+                    const SizedBox(
+                      height: 360,
+                      child: EmptyView(
+                        icon: Icons.notifications_none,
+                        title: 'No alerts',
+                        message:
+                            'If you miss a check-in deadline, the alert and the '
+                            'messages that would be sent appear here.',
+                      ),
+                    )
+                  else
+                    for (final alert in alerts) ...[
+                      _AlertCard(
+                        alert: alert,
+                        messages: _messagesByAlert[alert.id] ?? const [],
+                        onResolve: () => _resolve(alert),
+                        resolving: _resolving.contains(alert.id),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 12),
-          const MessageStatusBanner(),
-          const SizedBox(height: 16),
-          if (alerts.isEmpty)
-            const SizedBox(
-              height: 360,
-              child: EmptyView(
-                icon: Icons.notifications_none,
-                title: 'No alerts',
-                message:
-                    'If you miss a check-in deadline, the alert and the '
-                    'messages that would be sent appear here.',
-              ),
-            )
-          else
-            for (final alert in alerts) ...[
-              _AlertCard(
-                alert: alert,
-                messages: _messagesByAlert[alert.id] ?? const [],
-                onResolve: () => _resolve(alert),
-                resolving: _resolving.contains(alert.id),
-              ),
-              const SizedBox(height: 12),
-            ],
         ],
       ),
     );
@@ -203,14 +234,39 @@ class _AlertCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(
+          color: (alert.resolvedAt == null ? colors.error : colors.primary)
+              .withValues(alpha: 0.3),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: colors.error),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color:
+                        (alert.resolvedAt == null
+                                ? colors.errorContainer
+                                : colors.primaryContainer)
+                            .withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    alert.resolvedAt == null
+                        ? Icons.notification_important_outlined
+                        : Icons.task_alt_rounded,
+                    color: alert.resolvedAt == null
+                        ? colors.error
+                        : colors.primary,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

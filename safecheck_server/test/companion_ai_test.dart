@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:safecheck_server/src/companion/companion_ai.dart';
 import 'package:safecheck_server/src/companion/incident_service.dart';
@@ -10,6 +11,9 @@ class _Transport implements PlannerTransport {
   int status = 200;
   int calls = 0;
   Map<String, dynamic>? request;
+  Duration? timeoutUsed;
+  Uri? endpointUsed;
+  bool hang = false;
   @override
   Future<PlannerHttpResponse> post(
     Uri endpoint, {
@@ -18,7 +22,10 @@ class _Transport implements PlannerTransport {
     required Duration timeout,
   }) async {
     calls++;
+    timeoutUsed = timeout;
+    endpointUsed = endpoint;
     request = jsonDecode(body) as Map<String, dynamic>;
+    if (hang) return Completer<PlannerHttpResponse>().future;
     return PlannerHttpResponse(status, response);
   }
 
@@ -35,6 +42,109 @@ class _Transport implements PlannerTransport {
 }
 
 void main() {
+  test(
+    'incident requests use the verified endpoint and a bounded 45-second budget',
+    () async {
+      final transport = _Transport()
+        ..reply({
+          'overviewFacts': [0],
+          'factOrder': [0],
+          'actionCodes': ['callTraveller'],
+        });
+      await CompanionAi(
+        apiKey: 'synthetic',
+        transport: transport,
+      ).organizeIncident({});
+      expect(
+        transport.endpointUsed,
+        Uri.parse('https://api.meta.ai/v1/chat/completions'),
+      );
+      expect(transport.timeoutUsed, const Duration(seconds: 45));
+      expect(transport.request!['max_completion_tokens'], 1200);
+      expect(transport.calls, 1);
+    },
+  );
+  test('invalid timeout configurations are rejected', () {
+    for (final timeout in [Duration.zero, const Duration(seconds: 61)]) {
+      expect(
+        () => CompanionAi(apiKey: null, incidentTimeout: timeout),
+        throwsArgumentError,
+      );
+      expect(
+        () => CompanionAi(apiKey: null, planTimeout: timeout),
+        throwsArgumentError,
+      );
+    }
+  });
+  test('a stalled incident request times out safely without retry', () async {
+    final transport = _Transport()..hang = true;
+    await expectLater(
+      CompanionAi(
+        apiKey: 'synthetic-secret',
+        transport: transport,
+        incidentTimeout: const Duration(milliseconds: 5),
+      ).organizeIncident({}),
+      throwsA(
+        isA<TripPlanningException>()
+            .having((e) => e.failure, 'failure', PlanningFailure.timedOut)
+            .having(
+              (e) => e.message,
+              'redacted',
+              isNot(contains('synthetic-secret')),
+            ),
+      ),
+    );
+    expect(transport.calls, 1);
+  });
+  for (final entry in {
+    401: PlanningFailure.notConfigured,
+    403: PlanningFailure.notConfigured,
+    429: PlanningFailure.rateLimited,
+    503: PlanningFailure.unavailable,
+  }.entries) {
+    test('HTTP ${entry.key} has a safe classified failure', () async {
+      final transport = _Transport()
+        ..status = entry.key
+        ..response = 'private response';
+      await expectLater(
+        CompanionAi(
+          apiKey: 'synthetic',
+          transport: transport,
+        ).organizeIncident({}),
+        throwsA(
+          isA<TripPlanningException>()
+              .having((e) => e.failure, 'failure', entry.value)
+              .having(
+                (e) => e.message,
+                'redacted',
+                isNot(contains('private response')),
+              ),
+        ),
+      );
+      expect(transport.calls, 1);
+    });
+  }
+  for (final body in ['not json', '[]', '{"choices":null}', 'x' * 32769]) {
+    test(
+      'malformed or oversized companion response is rejected safely (${body.length})',
+      () async {
+        final transport = _Transport()..response = body;
+        await expectLater(
+          CompanionAi(
+            apiKey: 'synthetic',
+            transport: transport,
+          ).preparePlan({}),
+          throwsA(
+            isA<TripPlanningException>().having(
+              (e) => e.failure,
+              'failure',
+              PlanningFailure.invalidResponse,
+            ),
+          ),
+        );
+      },
+    );
+  }
   test(
     'safety plans use bounded Meta structured output without action tools',
     () async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:safecheck_client/safecheck_client.dart';
 import '../util/format.dart';
+import 'safety_design.dart';
 
 class IncidentBriefCard extends StatelessWidget {
   const IncidentBriefCard({
@@ -16,26 +17,20 @@ class IncidentBriefCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final brief = alert.brief;
     final resolved = alert.resolvedAt != null;
-    Widget group(String label, List<String> values) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        Text(label, style: Theme.of(context).textTheme.titleSmall),
-        for (final value in values)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text('• $value'),
-          ),
-      ],
-    );
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 12),
-        Text(
-          resolved ? 'Incident resolved' : 'Incident open',
-          style: Theme.of(context).textTheme.titleMedium,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SafetyTag(
+            label: resolved ? 'Incident resolved' : 'Incident open',
+            icon: resolved ? Icons.task_alt_rounded : Icons.info_outline,
+            color: resolved ? colors.primary : colors.error,
+          ),
         ),
+        const SizedBox(height: 12),
         if (brief != null) ...[
           Text(
             brief.source == 'meta'
@@ -48,10 +43,23 @@ class IncidentBriefCard extends StatelessWidget {
               'AI organization is pending. Recorded facts and standard steps are available now.',
             ),
           const SizedBox(height: 8),
-          Text(brief.overview),
-          group('Recorded facts', brief.facts),
-          group('What is uncertain', brief.unknowns),
-          group('Suggested next steps', brief.nextSteps),
+          Text(brief.overview, style: Theme.of(context).textTheme.bodyLarge),
+          SafetyFactGroup(
+            title: 'Recorded facts',
+            values: brief.facts,
+            icon: Icons.fact_check_outlined,
+          ),
+          SafetyFactGroup(
+            title: 'What is uncertain',
+            values: brief.unknowns,
+            icon: Icons.help_outline_rounded,
+            tone: colors.secondary,
+          ),
+          SafetyFactGroup(
+            title: 'Suggested next steps',
+            values: brief.nextSteps,
+            icon: Icons.playlist_add_check_rounded,
+          ),
         ],
         if (resolved) ...[
           const SizedBox(height: 12),
@@ -66,8 +74,9 @@ class IncidentBriefCard extends StatelessWidget {
             icon: const Icon(Icons.task_alt),
             label: Text(resolving ? 'Resolving…' : 'Resolve incident'),
           ),
-          const Text(
+          Text(
             'Resolution stops pending messages. Messages already submitted cannot be recalled.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ],
