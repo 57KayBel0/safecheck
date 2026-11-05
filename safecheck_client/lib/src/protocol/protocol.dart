@@ -32,6 +32,11 @@ import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'alerts/alert_message.dart' as _isas3mld;
 import 'alerts/safety_alert.dart' as _i79al053;
 import 'common/safecheck_exception.dart' as _iontdvzq;
+import 'companion/alert_reason.dart' as _iwolc6uz;
+import 'companion/brief_status.dart' as _i4443g4d;
+import 'companion/incident_brief.dart' as _i42dowtq;
+import 'companion/incident_view.dart' as _intz7cqw;
+import 'companion/journey_request.dart' as _i1v3s9cv;
 import 'contacts/contact_invite.dart' as _i3noworj;
 import 'contacts/contact_opt_in_status.dart' as _iz3pr2uv;
 import 'contacts/trusted_contact.dart' as _ixhyrlmy;
@@ -51,6 +56,11 @@ import 'trips/trip_type.dart' as _ie9y6u8r;
 export 'alerts/alert_message.dart';
 export 'alerts/safety_alert.dart';
 export 'common/safecheck_exception.dart';
+export 'companion/alert_reason.dart';
+export 'companion/brief_status.dart';
+export 'companion/incident_brief.dart';
+export 'companion/incident_view.dart';
+export 'companion/journey_request.dart';
 export 'contacts/contact_invite.dart';
 export 'contacts/contact_opt_in_status.dart';
 export 'contacts/trusted_contact.dart';
@@ -112,6 +122,21 @@ class Protocol extends _isc.SerializationManager {
     if (t == _iontdvzq.SafeCheckException) {
       return _iontdvzq.SafeCheckException.fromJson(data) as T;
     }
+    if (t == _iwolc6uz.AlertReason) {
+      return _iwolc6uz.AlertReason.fromJson(data) as T;
+    }
+    if (t == _i4443g4d.BriefStatus) {
+      return _i4443g4d.BriefStatus.fromJson(data) as T;
+    }
+    if (t == _i42dowtq.IncidentBrief) {
+      return _i42dowtq.IncidentBrief.fromJson(data) as T;
+    }
+    if (t == _intz7cqw.IncidentView) {
+      return _intz7cqw.IncidentView.fromJson(data) as T;
+    }
+    if (t == _i1v3s9cv.JourneyRequest) {
+      return _i1v3s9cv.JourneyRequest.fromJson(data) as T;
+    }
     if (t == _i3noworj.ContactInvite) {
       return _i3noworj.ContactInvite.fromJson(data) as T;
     }
@@ -168,6 +193,23 @@ class Protocol extends _isc.SerializationManager {
     }
     if (t == _isc.getType<_iontdvzq.SafeCheckException?>()) {
       return (data != null ? _iontdvzq.SafeCheckException.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_iwolc6uz.AlertReason?>()) {
+      return (data != null ? _iwolc6uz.AlertReason.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i4443g4d.BriefStatus?>()) {
+      return (data != null ? _i4443g4d.BriefStatus.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i42dowtq.IncidentBrief?>()) {
+      return (data != null ? _i42dowtq.IncidentBrief.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_intz7cqw.IncidentView?>()) {
+      return (data != null ? _intz7cqw.IncidentView.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i1v3s9cv.JourneyRequest?>()) {
+      return (data != null ? _i1v3s9cv.JourneyRequest.fromJson(data) : null)
           as T;
     }
     if (t == _isc.getType<_i3noworj.ContactInvite?>()) {
@@ -233,6 +275,12 @@ class Protocol extends _isc.SerializationManager {
               .toList()
           as T;
     }
+    if (t == List<String>) {
+      return (data as List).map((e) => deserialize<String>(e)).toList() as T;
+    }
+    if (t == List<int>) {
+      return (data as List).map((e) => deserialize<int>(e)).toList() as T;
+    }
     if (t == List<_ipl1wex2.SafetyAlert>) {
       return (data as List)
               .map((e) => deserialize<_ipl1wex2.SafetyAlert>(e))
@@ -256,6 +304,9 @@ class Protocol extends _isc.SerializationManager {
               .map((e) => deserialize<_ihgbcfsn.TrustedContact>(e))
               .toList()
           as T;
+    }
+    if (t == List<String>) {
+      return (data as List).map((e) => deserialize<String>(e)).toList() as T;
     }
     if (t == List<_if9xc140.LocationPoint>) {
       return (data as List)
@@ -293,6 +344,11 @@ class Protocol extends _isc.SerializationManager {
       _isas3mld.AlertMessage => 'AlertMessage',
       _i79al053.SafetyAlert => 'SafetyAlert',
       _iontdvzq.SafeCheckException => 'SafeCheckException',
+      _iwolc6uz.AlertReason => 'AlertReason',
+      _i4443g4d.BriefStatus => 'BriefStatus',
+      _i42dowtq.IncidentBrief => 'IncidentBrief',
+      _intz7cqw.IncidentView => 'IncidentView',
+      _i1v3s9cv.JourneyRequest => 'JourneyRequest',
       _i3noworj.ContactInvite => 'ContactInvite',
       _iz3pr2uv.ContactOptInStatus => 'ContactOptInStatus',
       _ixhyrlmy.TrustedContact => 'TrustedContact',
@@ -329,6 +385,16 @@ class Protocol extends _isc.SerializationManager {
         return 'SafetyAlert';
       case _iontdvzq.SafeCheckException():
         return 'SafeCheckException';
+      case _iwolc6uz.AlertReason():
+        return 'AlertReason';
+      case _i4443g4d.BriefStatus():
+        return 'BriefStatus';
+      case _i42dowtq.IncidentBrief():
+        return 'IncidentBrief';
+      case _intz7cqw.IncidentView():
+        return 'IncidentView';
+      case _i1v3s9cv.JourneyRequest():
+        return 'JourneyRequest';
       case _i3noworj.ContactInvite():
         return 'ContactInvite';
       case _iz3pr2uv.ContactOptInStatus():
@@ -391,6 +457,21 @@ class Protocol extends _isc.SerializationManager {
     }
     if (dataClassName == 'SafeCheckException') {
       return deserialize<_iontdvzq.SafeCheckException>(data['data']);
+    }
+    if (dataClassName == 'AlertReason') {
+      return deserialize<_iwolc6uz.AlertReason>(data['data']);
+    }
+    if (dataClassName == 'BriefStatus') {
+      return deserialize<_i4443g4d.BriefStatus>(data['data']);
+    }
+    if (dataClassName == 'IncidentBrief') {
+      return deserialize<_i42dowtq.IncidentBrief>(data['data']);
+    }
+    if (dataClassName == 'IncidentView') {
+      return deserialize<_intz7cqw.IncidentView>(data['data']);
+    }
+    if (dataClassName == 'JourneyRequest') {
+      return deserialize<_i1v3s9cv.JourneyRequest>(data['data']);
     }
     if (dataClassName == 'ContactInvite') {
       return deserialize<_i3noworj.ContactInvite>(data['data']);

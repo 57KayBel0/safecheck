@@ -97,7 +97,9 @@ class _TripTile extends StatelessWidget {
       TripStatus.active => ('Active', Icons.timelapse, colors.primary),
       TripStatus.checkedIn => ('Checked in', Icons.verified_user, Colors.green),
       TripStatus.missed => (
-        'Missed – alert created',
+        trip.helpRequestedAt != null
+            ? 'Help requested'
+            : 'Missed – alert created',
         Icons.warning,
         colors.error,
       ),

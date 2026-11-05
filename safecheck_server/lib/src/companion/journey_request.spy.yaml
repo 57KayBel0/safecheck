@@ -1,0 +1,11 @@
+class: JourneyRequest
+fields:
+  tripType: TripType
+  description: String
+  checkInAtUtc: DateTime
+  contactIds: List<int>
+  graceMinutes: int, default=0
+  locationSharing: LocationSharing, default=off
+  safetyPlanJson: String?
+  useAiIncidentSummary: bool, default=false
+  allowContactResolution: bool, default=false

@@ -37,6 +37,18 @@ String formatDateTime(BuildContext context, DateTime time) {
   return '$date · ${formatTime(context, time)}';
 }
 
+/// Unambiguous planner review time, independent of the device time zone.
+String formatSastDateTime(BuildContext context, DateTime time) {
+  final sast = time.toUtc().add(const Duration(hours: 2));
+  final localizations = MaterialLocalizations.of(context);
+  final date = localizations.formatMediumDate(sast);
+  final clock = localizations.formatTimeOfDay(
+    TimeOfDay.fromDateTime(sast),
+    alwaysUse24HourFormat: true,
+  );
+  return '$date · $clock SAST (UTC+2)';
+}
+
 /// "1 h 05 min" / "12 min" / "45 s"
 String formatDurationShort(int minutes) {
   if (minutes < 60) return '$minutes min';

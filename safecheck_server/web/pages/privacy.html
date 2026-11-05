@@ -16,7 +16,7 @@
 <body><main>
   <nav><a href="/">SafeCheck home</a></nav>
   <h1>SafeCheck privacy policy</h1>
-  <p>Draft dated 12 October 2026. SafeCheck is a personal safety prototype
+  <p>Draft updated 3 November 2026. SafeCheck is a personal safety prototype
     created by Kabelo Motshabi Makgae for check-ins and trusted-contact alerts.</p>
   <p>SafeCheck is operated by Kabelo Motshabi Makgae. For support, feedback or
     privacy requests, email
@@ -55,9 +55,56 @@
     or browser. You review its name and number before saving; manual entry is
     available. SafeCheck does not import your entire address book.</p>
   <p>Trips record their type, description, duration, start/deadline/end times,
-    check-in status, location-sharing choice and a snapshot of the contacts at
-    trip start. Alerts and message history record recipients, message content,
+    check-in status, grace period, extensions, explicit help requests, optional
+    reviewed safety plan, location-sharing choice and a snapshot of the selected
+    contacts and incident-resolution permission at trip start. Alerts and message history record recipients, message content,
     channel, timestamps, delivery/simulation status and failure details.</p>
+
+  <h2>Optional AI trip planning</h2>
+  <p>If you choose Describe with AI, your typed trip description and the prior
+    exchanges in that planning conversation are sent through SafeCheck's server
+    to Meta Model API. A server time reference in UTC and South African time is
+    included. SafeCheck does not automatically add your profile, trusted-contact
+    records or recorded GPS points. Any personal information you type yourself
+    will be included. Meta processes these requests under its API terms and
+    privacy practices.</p>
+  <p>The planning conversation is held in the app's memory for follow-up
+    questions. SafeCheck's planning service does not save prompts or draft
+    responses to its database. It saves per-account request counts and time
+    windows to enforce usage limits. After you explicitly confirm a reviewed
+    draft, the resulting trip details are stored like a manually created trip.
+    AI planning can make mistakes; review the description and exact check-in
+    time before confirming. Manual setup remains available.</p>
+
+  <h2>Optional safety plans and incident briefs</h2>
+  <p>Choosing Create AI safety plan sends your supplied journey description,
+    transport, check-in deadline, grace period and server time to Meta. The
+    reviewed plan is saved with the trip. If Meta is unavailable or a request
+    cannot be completed, a standard plan is clearly labelled instead.</p>
+  <p>Use Meta for an incident brief is a separate per-journey choice, off by
+    default. If selected, an alert can send stored journey facts, recorded
+    deadline/alert times and the last consented location timestamp to Meta.
+    Coordinates, profile and contact records are not automatically included.
+    Information you type in a description may still identify you. Meta selects
+    fact indexes and bounded next-step codes; the server preserves the recorded
+    facts and uncertainties. Briefs are stored with the alert. AI requests share
+    the account's request limits. A standard brief and alert messages do not
+    depend on a successful AI response.</p>
+  <h2>Private incident links and resolution</h2>
+  <p>Companion alerts can include a per-contact private incident link revealing
+    traveller name, journey details, recorded facts, uncertainties, suggested
+    steps, resolution status/note and an existing consented tracking link when
+    available. Anyone holding a link can view it for 48 hours. The link is a
+    bearer credential; keep it private. The access table stores its hash, while
+    the full link is part of saved message content.</p>
+  <p>Allow accepted contacts to resolve incidents is a separate per-journey
+    choice, off by default. When selected, links for contacts who had accepted
+    their invitation at trip start also permit resolution. Forwarding such a
+    link grants that permission to its holder. The traveller can resolve their
+    own incidents after checking the situation. Resolution saves an actor label,
+    time and optional note. It stops pending notifications; messages already
+    claimed or submitted to a provider cannot be recalled. A resolution is a
+    user report, not independent proof of safety.</p>
 
   <h2>Location and tracking links</h2>
   <p>Location sharing is selected per trip: off, live, or visible after a missed

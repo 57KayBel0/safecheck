@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:safecheck_server/src/generated/protocol.dart';
 import 'package:safecheck_server/src/messaging/bulk_sms_message_sender.dart';
 import 'package:safecheck_server/src/messaging/message_dispatcher.dart';
+import 'package:safecheck_server/src/messaging/twilio_whatsapp_message_sender.dart';
+import 'package:safecheck_server/src/messaging/twilio_trial_probe.dart';
 import 'package:serverpod/serverpod.dart';
 import 'package:test/test.dart';
 
@@ -44,9 +46,31 @@ class FakeBulkSmsTransport implements BulkSmsTransport {
   }
 }
 
+class FakeTwilioTransport implements BulkSmsTransport {
+  FakeTwilioTransport(this.accept);
+  final bool accept;
+  final calls = <String>[];
+
+  @override
+  Future<BulkSmsHttpResponse> post({
+    required Uri uri,
+    required Map<String, String> headers,
+    required String body,
+  }) async {
+    calls.add(body);
+    return BulkSmsHttpResponse(
+      statusCode: accept ? 201 : 400,
+      body: jsonEncode({
+        'sid': 'SM${List.filled(32, 'a').join()}',
+        'status': accept ? 'queued' : 'failed',
+      }),
+    );
+  }
+}
+
 void main() {
   withServerpod(
-    'Demo-only dispatch with fake senders',
+    'Notification dispatch with fake senders',
     rollbackDatabase: RollbackDatabase.disabled,
     (builder, endpoints) {
       const owner = '44444444-4444-4444-8444-444444444444';
@@ -110,6 +134,126 @@ void main() {
           trip.id!,
         );
         return (await endpoints.alert.listAlerts(user)).single.id!;
+      }
+
+      for (final accepted in [true, false]) {
+        test(
+          'missed check-in dispatches through Twilio adapter: $accepted',
+          () async {
+            final twilio = FakeTwilioTransport(accepted);
+            final sms = FakeBulkSmsTransport();
+            MessageDispatcher.sender = TwilioWhatsAppMessageSender(
+              accountSid: 'AC${List.filled(32, 'b').join()}',
+              authToken: 'fake-secret',
+              from: '+14155238886',
+              recipients: {'+27830000010'},
+              transport: twilio,
+              fallback: BulkSmsMessageSender(
+                tokenId: 'fake-id',
+                tokenSecret: 'fake-secret',
+                transport: sms,
+              ),
+            );
+            final id = await alert(sms: true);
+            final rows = await endpoints.alert.listMessages(user);
+            final whatsapp = rows.singleWhere(
+              (m) => m.channel == MessageChannel.whatsapp,
+            );
+            expect(
+              whatsapp.status,
+              accepted ? MessageStatus.sent : MessageStatus.failed,
+            );
+            expect(
+              Uri.splitQueryString(twilio.calls.single)['Body'],
+              whatsapp.body,
+            );
+            expect(
+              rows.singleWhere((m) => m.channel == MessageChannel.sms).status,
+              accepted ? MessageStatus.skipped : MessageStatus.sent,
+            );
+            expect(sms.calls, hasLength(accepted ? 0 : 1));
+            final trip = (await endpoints.trip.history(user)).single;
+            expect(trip.status, TripStatus.missed);
+            for (var i = 0; i < 3; i++) {
+              await endpoints.futureCalls.tripDeadline.processDeadline(
+                builder,
+                trip.id!,
+              );
+              await MessageDispatcher.dispatchPending(
+                builder.build(),
+                alertId: id,
+              );
+            }
+            expect(await endpoints.alert.listAlerts(user), hasLength(1));
+            expect(twilio.calls, hasLength(1));
+            expect(sms.calls, hasLength(accepted ? 0 : 1));
+          },
+        );
+      }
+
+      for (final smsEnabled in [true, false]) {
+        test(
+          'accepted trial probe never suppresses permitted SMS: $smsEnabled',
+          () async {
+            final transport = FakeTwilioTransport(true);
+            final probe = TwilioTrialProbe(
+              accountSid: 'AC${'a' * 32}',
+              authToken: 'synthetic',
+              from: '+14155550000',
+              recipients: {'+27830000010'},
+              transport: transport,
+            );
+            expect(
+              (await probe.submit(
+                recipient: '+27830000010',
+                contentSid: 'HX${'a' * 32}',
+                approveRealSend: true,
+              )).status,
+              TrialProbeStatus.accepted,
+            );
+            final sms = FakeBulkSmsTransport();
+            MessageDispatcher.sender = twilioSandboxSenderForConfig(
+              mode: 'limited-trial',
+              accountSid: null,
+              authToken: null,
+              from: null,
+              recipients: null,
+              fallback: BulkSmsMessageSender(
+                tokenId: 'synthetic',
+                tokenSecret: 'synthetic',
+                transport: sms,
+              ),
+            );
+            final id = await alert(sms: smsEnabled);
+            final rows = await endpoints.alert.listMessages(user);
+            expect(
+              rows
+                  .singleWhere((m) => m.channel == MessageChannel.whatsapp)
+                  .status,
+              MessageStatus.failed,
+            );
+            expect(rows.length, smsEnabled ? 2 : 1);
+            expect(sms.calls.length, smsEnabled ? 1 : 0);
+            if (smsEnabled) {
+              final message = rows.singleWhere(
+                (m) => m.channel == MessageChannel.sms,
+              );
+              final payload =
+                  (jsonDecode(sms.calls.single.body) as List).single as Map;
+              expect(payload['body'] == message.body, true);
+              expect(message.status, MessageStatus.sent);
+            }
+            for (var i = 0; i < 3; i++) {
+              await MessageDispatcher.dispatchPending(
+                builder.build(),
+                alertId: id,
+              );
+            }
+            expect(transport.calls.length, 1); // Only the separate mock probe.
+            expect(sms.calls.length, smsEnabled ? 1 : 0);
+            expect((await endpoints.alert.listAlerts(user)).length, 1);
+          },
+        );
       }
 
       test(

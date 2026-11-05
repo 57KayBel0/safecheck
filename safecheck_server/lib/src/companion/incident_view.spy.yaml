@@ -1,0 +1,13 @@
+class: IncidentView
+fields:
+  travellerName: String
+  journeyDescription: String
+  deadline: DateTime
+  createdAt: DateTime
+  reason: AlertReason
+  brief: IncidentBrief
+  canResolve: bool
+  resolvedAt: DateTime?
+  resolutionActor: String?
+  resolutionNote: String?
+  trackingUrl: String?

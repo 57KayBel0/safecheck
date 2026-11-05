@@ -14,7 +14,10 @@
 import 'dart:async' as _ida;
 import 'package:clock/clock.dart' as _io0w16m8;
 import 'package:serverpod/serverpod.dart' as _is;
+import '../companion/incident_summary_future_call.dart' as _i8do22i2;
 import '../trips/trip_deadline_future_call.dart' as _icub75es;
+import 'future_calls_generated_models/incident_summary_future_call_generate_model.dart'
+    as _ipdwtssp;
 import 'future_calls_generated_models/trip_deadline_future_call_process_deadline_model.dart'
     as _ih51nflp;
 
@@ -60,6 +63,7 @@ class FutureCalls extends _is.FutureCallDispatch<_FutureCallRef> {
     String serverId,
   ) {
     var registeredFutureCalls = <String, _is.InvokableFutureCall>{
+      'IncidentSummaryGenerateFutureCall': IncidentSummaryGenerateFutureCall(),
       'TripDeadlineProcessDeadlineFutureCall':
           TripDeadlineProcessDeadlineFutureCall(),
       'TripDeadlineSweepOverdueFutureCall':
@@ -184,9 +188,29 @@ class _FutureCallRef {
 
   final _InvokeFutureCall _invokeFutureCall;
 
+  late final incidentSummary = _IncidentSummaryFutureCallDispatcher(
+    _invokeFutureCall,
+  );
+
   late final tripDeadline = _TripDeadlineFutureCallDispatcher(
     _invokeFutureCall,
   );
+}
+
+class _IncidentSummaryFutureCallDispatcher {
+  _IncidentSummaryFutureCallDispatcher(this._invokeFutureCall);
+
+  final _InvokeFutureCall _invokeFutureCall;
+
+  Future<void> generate(int alertId) {
+    var object = _ipdwtssp.IncidentSummaryFutureCallGenerateModel(
+      alertId: alertId,
+    );
+    return _invokeFutureCall(
+      'IncidentSummaryGenerateFutureCall',
+      object,
+    );
+  }
 }
 
 class _TripDeadlineFutureCallDispatcher {
@@ -209,6 +233,26 @@ class _TripDeadlineFutureCallDispatcher {
       'TripDeadlineSweepOverdueFutureCall',
       null,
     );
+  }
+}
+
+class IncidentSummaryGenerateFutureCall
+    extends _is.FutureCall<_ipdwtssp.IncidentSummaryFutureCallGenerateModel>
+    implements
+        _is.InvokableFutureCall<
+          _ipdwtssp.IncidentSummaryFutureCallGenerateModel
+        > {
+  @override
+  _ida.Future<void> invoke(
+    _is.Session session,
+    _ipdwtssp.IncidentSummaryFutureCallGenerateModel? object,
+  ) async {
+    if (object != null) {
+      await _i8do22i2.IncidentSummaryFutureCall().generate(
+        session,
+        object.alertId,
+      );
+    }
   }
 }
 

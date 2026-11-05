@@ -1,0 +1,6 @@
+enum: BriefStatus
+values:
+  - pending
+  - processing
+  - ready
+  - fallback

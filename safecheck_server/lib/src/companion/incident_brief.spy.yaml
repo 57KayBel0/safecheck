@@ -1,0 +1,9 @@
+### Facts and unknowns are assembled by the server. Meta may prioritize them.
+class: IncidentBrief
+fields:
+  source: String
+  overview: String
+  facts: List<String>
+  unknowns: List<String>
+  nextSteps: List<String>
+  generatedAt: DateTime

@@ -3,6 +3,7 @@
 class: ContactSnapshot
 fields:
   name: String
+  canResolveIncident: bool, default=false
   phoneNumber: String
   relationship: String?
 

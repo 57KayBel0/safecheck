@@ -6,11 +6,13 @@ class TripCompletionNotice extends StatelessWidget {
   const TripCompletionNotice({
     super.key,
     required this.status,
+    this.helpRequested = false,
     required this.onDismiss,
     required this.onOpenAlerts,
   });
 
   final TripStatus status;
+  final bool helpRequested;
   final VoidCallback onDismiss;
   final VoidCallback onOpenAlerts;
 
@@ -42,7 +44,11 @@ class TripCompletionNotice extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      safe ? "You're checked in" : 'Check-in deadline missed',
+                      safe
+                          ? "You're checked in"
+                          : helpRequested
+                          ? 'Help request created'
+                          : 'Check-in deadline missed',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: fg,
                         fontWeight: FontWeight.bold,

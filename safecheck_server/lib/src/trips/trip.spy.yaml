@@ -21,6 +21,13 @@ fields:
   contacts: List<ContactSnapshot>
   ### Who may see this trip's location. Chosen when the trip starts.
   locationSharing: LocationSharing, default=off
+  companionMode: bool, default=false
+  graceMinutes: int, default=0
+  ### Null means the original deadline applies (legacy trips and zero grace).
+  alertAt: DateTime?
+  safetyPlanJson: String?
+  useAiIncidentSummary: bool, default=false
+  helpRequestedAt: DateTime?
 indexes:
   trip_owner_idx:
     fields: ownerId

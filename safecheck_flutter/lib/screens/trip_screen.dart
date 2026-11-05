@@ -15,8 +15,11 @@ import '../reminders/reminder_feedback.dart';
 import '../util/errors.dart';
 import '../util/format.dart';
 import '../widgets/state_views.dart';
-import '../widgets/start_trip_form.dart';
+import '../widgets/companion_journey_form.dart';
+import '../widgets/safety_plan_card.dart';
 import '../widgets/trip_completion_notice.dart';
+import '../widgets/safety_design.dart';
+import '../widgets/journey_overview.dart';
 
 /// Home tab: start a trip, or follow the active trip and check in.
 class TripScreen extends StatefulWidget {
@@ -46,6 +49,9 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
   /// Server clock minus device clock, so the countdown follows the server.
   Duration _clockOffset = Duration.zero;
   List<TrustedContact> _contacts = const [];
+  bool? _aiAvailable;
+  bool _checkingAi = false;
+  String? _aiAvailabilityMessage;
 
   bool _checkingIn = false;
   CheckInReminderMode _reminderMode = CheckInReminderMode.silent;
@@ -75,6 +81,42 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     dataRevision.addListener(_onDataChanged);
     _load();
+    unawaited(_checkAiAvailability());
+  }
+
+  Future<void> _checkAiAvailability() async {
+    if (_checkingAi) return;
+    _checkingAi = true;
+    if (mounted) {
+      setState(() {
+        _aiAvailable = null;
+        _aiAvailabilityMessage = null;
+      });
+    }
+    try {
+      final available = await client.planning.isAvailable().timeout(
+        const Duration(seconds: 20),
+      );
+      if (mounted) {
+        setState(() {
+          _aiAvailable = available;
+          _aiAvailabilityMessage = available
+              ? null
+              : 'The server reports no usable Meta key. AI actions remain visible so you can retry; manual setup works.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _aiAvailable = null;
+          _aiAvailabilityMessage = e is TimeoutException
+              ? 'The AI availability check timed out. Retry the connection, or enter journey details manually.'
+              : friendlyError(e);
+        });
+      }
+    } finally {
+      _checkingAi = false;
+    }
   }
 
   @override
@@ -164,7 +206,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     setState(() {});
     // Once the deadline passes, ask the server what happened. Retry every
     // 10 seconds until the server reports the trip as ended.
-    if (!_serverNow.isBefore(trip.deadline)) {
+    if (!_serverNow.isBefore(trip.alertAt ?? trip.deadline)) {
       final last = _lastDeadlineRefresh;
       if (last == null ||
           DateTime.now().difference(last) > const Duration(seconds: 10)) {
@@ -193,19 +235,107 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     if (_trip == null) notifyDataChanged();
   }
 
-  Future<void> _startTrip(
-    TripType type,
-    String description,
-    int minutes,
-    CheckInReminderMode reminderMode,
-    LocationSharing sharing,
-  ) async {
-    final snapshot = await client.trip.startTrip(
-      type,
-      description,
-      minutes,
-      sharing,
+  Future<void> _startJourney(JourneyRequest request) => _startConfirmedTrip(
+    () => client.trip.startJourney(request),
+    CheckInReminderMode.silent,
+  );
+
+  Future<void> _extendJourney() async {
+    final trip = _trip;
+    if (trip == null) return;
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Extend your journey'),
+        children: [
+          for (final m in [5, 15, 30, 60])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, m),
+              child: Text('Add $m minutes'),
+            ),
+        ],
+      ),
     );
+    if (minutes == null || !mounted) return;
+    setState(() => _checkingIn = true);
+    try {
+      final result = await client.trip.extendJourney(trip.id!, minutes);
+      if (!mounted) return;
+      setState(() {
+        _trip = result.trip;
+        _clockOffset = result.serverTime.difference(DateTime.now().toUtc());
+        _reminderGate.cancel(trip.id!);
+      });
+      _syncTicker();
+      notifyDataChanged();
+      showSnack(context, 'Journey extended. Check the updated deadline.');
+    } catch (e) {
+      if (mounted) showSnack(context, friendlyError(e), error: true);
+      await _load(silent: true);
+    } finally {
+      if (mounted) setState(() => _checkingIn = false);
+    }
+  }
+
+  Future<void> _requestHelp() async {
+    final trip = _trip;
+    if (trip == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Request help from your contacts?'),
+        content: const Text(
+          'This creates an incident now and queues messages using the configured delivery mode. It does not contact emergency services. Simulated messages are not sent.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Create help request'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _checkingIn = true);
+    try {
+      final result = await client.trip.requestHelp(trip.id!);
+      if (!mounted) return;
+      setState(() {
+        _trip = null;
+        _endedTrip = result.endedTrip;
+        _checkingIn = false;
+        _reminderGate.cancel(trip.id!);
+      });
+      _syncTicker();
+      _stopLocationTracking();
+      notifyDataChanged();
+      widget.onOpenAlerts();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _checkingIn = false);
+        showSnack(context, friendlyError(e), error: true);
+      }
+      await _load(silent: true);
+    }
+  }
+
+  Future<void> _startConfirmedTrip(
+    Future<TripSnapshot> Function() start,
+    CheckInReminderMode reminderMode,
+  ) async {
+    final TripSnapshot snapshot;
+    try {
+      snapshot = await start();
+    } catch (_) {
+      // A connection loss may happen after the server commits a start. Refresh
+      // before offering another start; never automatically retry the mutation.
+      await _load(silent: true);
+      rethrow;
+    }
     if (!mounted) return;
     setState(() {
       _clockOffset = snapshot.serverTime.difference(DateTime.now().toUtc());
@@ -289,13 +419,20 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
         children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
+              constraints: const BoxConstraints(maxWidth: 1000),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_trip == null || MediaQuery.sizeOf(context).width >= 1000)
+                    JourneyOverview(
+                      trip: _trip,
+                      contacts: _contacts,
+                      onOpenContacts: widget.onOpenContacts,
+                    ),
                   if (_endedTrip != null && _trip == null) ...[
                     TripCompletionNotice(
                       status: _endedTrip!.status,
+                      helpRequested: _endedTrip!.helpRequestedAt != null,
                       onOpenAlerts: widget.onOpenAlerts,
                       onDismiss: () => setState(() => _endedTrip = null),
                     ),
@@ -316,14 +453,36 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                           _reminderGate.isVisibleFor(_trip!.id!) &&
                           _serverNow.isBefore(_trip!.deadline),
                       onCheckIn: _checkIn,
+                      onExtend: _extendJourney,
+                      onRequestHelp: _requestHelp,
                     )
                   else
-                    StartTripForm(
-                      contacts: _contacts,
-                      loadContacts: () => client.contact.list(),
-                      serverNow: () => _serverNow,
-                      onOpenContacts: widget.onOpenContacts,
-                      onStart: _startTrip,
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 720),
+                        child: CompanionJourneyForm(
+                          contacts: _contacts,
+                          loadContacts: () => client.contact.list(),
+                          serverNow: () => _serverNow,
+                          propose: (text, history) =>
+                              client.planning.propose(text, history),
+                          preparePlan: (type, description, deadline, grace) =>
+                              client.planning.prepareSafetyPlan(
+                                type,
+                                description,
+                                deadline,
+                                grace,
+                              ),
+                          onStart: _startJourney,
+                          onOpenContacts: widget.onOpenContacts,
+                          onBusyChanged: (_) {},
+                          aiAvailable: _aiAvailable,
+                          availabilityMessage: _aiAvailabilityMessage,
+                          onRetryAvailability: () =>
+                              unawaited(_checkAiAvailability()),
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -342,6 +501,8 @@ class _ActiveTripView extends StatelessWidget {
     required this.checkingIn,
     required this.reminder,
     required this.onCheckIn,
+    required this.onExtend,
+    required this.onRequestHelp,
   });
 
   final Trip trip;
@@ -349,13 +510,17 @@ class _ActiveTripView extends StatelessWidget {
   final bool checkingIn;
   final bool reminder;
   final VoidCallback onCheckIn;
+  final VoidCallback onExtend;
+  final VoidCallback onRequestHelp;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final remaining = trip.deadline.difference(serverNow);
+    final nominalRemaining = trip.deadline.difference(serverNow);
+    final remaining = (trip.alertAt ?? trip.deadline).difference(serverNow);
     final overdue = remaining <= Duration.zero;
+    final inGrace = !overdue && nominalRemaining <= Duration.zero;
     final total = trip.deadline.difference(trip.startedAt).inSeconds;
     final progress = total <= 0
         ? 1.0
@@ -371,55 +536,42 @@ class _ActiveTripView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     _StatusPill(
-                      label: overdue ? 'Deadline passed' : 'Trip active',
+                      label: overdue
+                          ? 'Alert time passed'
+                          : inGrace
+                          ? 'Grace period'
+                          : 'Trip active',
                       color: overdue ? colors.error : colors.primary,
                     ),
-                    const Spacer(),
-                    Icon(tripTypeIcon(trip.tripType), color: colors.primary),
-                    const SizedBox(width: 6),
-                    Text(tripTypeLabel(trip.tripType), style: text.labelLarge),
+                    SafetyTag(
+                      label: tripTypeLabel(trip.tripType),
+                      icon: tripTypeIcon(trip.tripType),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(trip.description, style: text.titleMedium),
+                Text(trip.description, style: text.titleLarge),
                 const SizedBox(height: 24),
                 Semantics(
                   label: overdue
                       ? 'Deadline passed'
                       : describeCountdown(remaining),
                   excludeSemantics: true,
-                  child: Column(
-                    children: [
-                      Text(
-                        overdue ? '00:00' : formatCountdown(remaining),
-                        style: text.displayMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                          color: overdue || urgent
-                              ? colors.error
-                              : colors.onSurface,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      Text(
-                        overdue ? 'time is up' : 'left to check in',
-                        style: text.bodyLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    color: overdue || urgent ? colors.error : colors.primary,
-                    semanticsLabel: 'Trip progress',
+                  child: JourneyCountdown(
+                    value: overdue ? '00:00' : formatCountdown(remaining),
+                    progress: progress,
+                    urgent: overdue || urgent,
+                    caption: overdue
+                        ? 'time is up'
+                        : inGrace
+                        ? 'grace left before an alert'
+                        : 'left until alert time',
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -445,11 +597,6 @@ class _ActiveTripView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-
-        if (trip.locationSharing != LocationSharing.off) ...[
-          _LiveTripMap(trip: trip),
-          const SizedBox(height: 16),
-        ],
 
         if (reminder && !overdue) ...[
           Card(
@@ -530,6 +677,57 @@ class _ActiveTripView extends StatelessWidget {
               label: Text(checkingIn ? 'Checking in…' : "I'm safe"),
             ),
           ),
+        const SizedBox(height: 12),
+        if (!overdue)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: checkingIn ? null : onExtend,
+                icon: const Icon(Icons.more_time),
+                label: const Text('Extend journey'),
+              ),
+              OutlinedButton.icon(
+                onPressed: checkingIn ? null : onRequestHelp,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.error,
+                  side: BorderSide(color: colors.error),
+                  backgroundColor: colors.errorContainer.withValues(alpha: 0.3),
+                ),
+                icon: const Icon(Icons.sos_rounded),
+                label: const Text('Request help'),
+              ),
+            ],
+          ),
+        const SizedBox(height: 20),
+        if (trip.locationSharing != LocationSharing.off) ...[
+          _LiveTripMap(trip: trip),
+          const SizedBox(height: 16),
+        ] else ...[
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
+              ),
+              leading: Icon(
+                Icons.location_off_outlined,
+                color: colors.onSurfaceVariant,
+              ),
+              title: const Text('Location sharing is off'),
+              subtitle: const Text(
+                'This journey does not collect or share your location.',
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (trip.graceMinutes > 0)
+          Text(
+            'Check-in deadline: ${formatSastDateTime(context, trip.deadline)}. Alert time after grace: ${formatSastDateTime(context, trip.alertAt ?? trip.deadline)}.',
+          ),
+        SafetyPlanCard(planJson: trip.safetyPlanJson, atStart: true),
         const SizedBox(height: 24),
         Text('Contacts for this trip', style: text.titleMedium),
         const SizedBox(height: 4),
@@ -912,20 +1110,6 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: color,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
+    return SafetyTag(label: label, color: color);
   }
 }

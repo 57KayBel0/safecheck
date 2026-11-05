@@ -3,6 +3,7 @@ import 'package:safecheck_client/safecheck_client.dart';
 
 import '../reminders/check_in_reminder.dart';
 import '../util/format.dart';
+import 'safety_plan_card.dart';
 
 /// Reviews a draft only. Opening or dismissing this dialog starts no trip.
 class TripReviewDialog extends StatelessWidget {
@@ -15,6 +16,11 @@ class TripReviewDialog extends StatelessWidget {
     required this.contacts,
     required this.locationSharing,
     required this.reminderMode,
+    this.exactDeadline = false,
+    this.graceMinutes = 0,
+    this.safetyPlanJson,
+    this.useAiIncidentSummary = false,
+    this.allowContactResolution = false,
   });
 
   final TripType tripType;
@@ -24,6 +30,11 @@ class TripReviewDialog extends StatelessWidget {
   final List<TrustedContact> contacts;
   final LocationSharing locationSharing;
   final CheckInReminderMode reminderMode;
+  final bool exactDeadline;
+  final int graceMinutes;
+  final String? safetyPlanJson;
+  final bool useAiIncidentSummary;
+  final bool allowContactResolution;
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +54,16 @@ class TripReviewDialog extends StatelessWidget {
             ),
             _ReviewDetail(
               icon: Icons.schedule,
-              label: 'Check in within ${formatDurationShort(durationMinutes)}',
-              value:
-                  'Around ${formatDateTime(context, estimatedDeadline)} '
-                  '(your local time). The countdown starts when you confirm; '
-                  'the server sets the exact deadline.',
+              label: exactDeadline
+                  ? 'Check-in deadline'
+                  : 'Check in within ${formatDurationShort(durationMinutes)}',
+              value: exactDeadline
+                  ? '${formatSastDateTime(context, estimatedDeadline)}. '
+                        'This exact time is kept when you confirm. '
+                        'If it becomes too close, choose a new time.'
+                  : 'Around ${formatDateTime(context, estimatedDeadline)} '
+                        '(your local time). The countdown starts when you confirm; '
+                        'the server sets the exact deadline.',
             ),
             _ReviewDetail(
               icon: locationSharing == LocationSharing.off
@@ -79,6 +95,19 @@ class TripReviewDialog extends StatelessWidget {
               },
             ),
             const Divider(height: 24),
+            if (graceMinutes > 0)
+              Text(
+                'Grace period: $graceMinutes minutes. Alert time: ${formatSastDateTime(context, estimatedDeadline.add(Duration(minutes: graceMinutes)))}.',
+              ),
+            if (useAiIncidentSummary)
+              const Text(
+                'Meta may organize an incident brief after an alert. Standard guidance is available immediately if AI fails.',
+              ),
+            if (allowContactResolution)
+              const Text(
+                'Accepted contacts with a private incident link may resolve the incident. Anyone holding that link has the same permission for 48 hours.',
+              ),
+            SafetyPlanCard(planJson: safetyPlanJson),
             Text(
               'Trusted contacts (${contacts.length})',
               style: text.titleSmall,

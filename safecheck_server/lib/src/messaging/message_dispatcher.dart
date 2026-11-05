@@ -1,6 +1,7 @@
 import 'package:serverpod/serverpod.dart';
 
 import '../generated/protocol.dart';
+import '../common/owner_lock.dart';
 
 /// Outcome of handing one message to a [MessageSender].
 class SendResult {
@@ -179,16 +180,40 @@ abstract final class MessageDispatcher {
     Session session,
     AlertMessage message,
   ) async {
-    final claimed = await AlertMessage.db.updateWhere(
-      session,
-      columnValues: (t) => [
-        t.status(MessageStatus.sending),
-        t.statusUpdatedAt(DateTime.now().toUtc()),
-        t.failureReason(null),
-      ],
-      where: (t) =>
-          t.id.equals(message.id) & t.status.equals(MessageStatus.pending),
-    );
+    final claimed = await session.db.transaction((tx) async {
+      await lockOwner(session, message.ownerId, tx);
+      final incident = await SafetyAlert.db.findById(
+        session,
+        message.alertId,
+        transaction: tx,
+      );
+      if (incident == null ||
+          incident.ownerId != message.ownerId ||
+          incident.resolvedAt != null) {
+        await AlertMessage.db.updateWhere(
+          session,
+          columnValues: (m) => [
+            m.status(MessageStatus.skipped),
+            m.statusUpdatedAt(DateTime.now().toUtc()),
+          ],
+          where: (m) =>
+              m.id.equals(message.id!) & m.status.equals(MessageStatus.pending),
+          transaction: tx,
+        );
+        return <AlertMessage>[];
+      }
+      return AlertMessage.db.updateWhere(
+        session,
+        columnValues: (t) => [
+          t.status(MessageStatus.sending),
+          t.statusUpdatedAt(DateTime.now().toUtc()),
+          t.failureReason(null),
+        ],
+        where: (t) =>
+            t.id.equals(message.id) & t.status.equals(MessageStatus.pending),
+        transaction: tx,
+      );
+    });
 
     if (claimed.isEmpty) {
       return null;

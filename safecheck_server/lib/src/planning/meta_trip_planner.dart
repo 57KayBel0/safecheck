@@ -90,7 +90,7 @@ class MetaTripPlanner {
     List<PlanningTurn> history = const [],
   }) async {
     final text = input.trim();
-    _validateInput(text, history);
+    validateInput(text, history);
     if (!isConfigured) {
       throw const TripPlanningException(
         PlanningFailure.notConfigured,
@@ -235,7 +235,7 @@ class MetaTripPlanner {
     }
   }
 
-  static void _validateInput(String input, List<PlanningTurn> history) {
+  static void validateInput(String input, List<PlanningTurn> history) {
     var invalid =
         input.isEmpty ||
         input.length > maxInputCharacters ||
@@ -268,7 +268,11 @@ class _ProviderUnavailable implements Exception {
 /// A new client per request makes timeout cleanup explicit and prevents
 /// authorization headers from being forwarded through HTTP redirects.
 class IoPlannerTransport implements PlannerTransport {
-  const IoPlannerTransport();
+  const IoPlannerTransport({
+    this.maxResponseBytes = MetaTripPlanner.maxResponseBytes,
+  });
+
+  final int maxResponseBytes;
 
   @override
   Future<PlannerHttpResponse> post(
@@ -287,12 +291,12 @@ class IoPlannerTransport implements PlannerTransport {
         request.contentLength = payload.length;
         request.add(payload);
         final response = await request.close();
-        if (response.contentLength > MetaTripPlanner.maxResponseBytes) {
+        if (response.contentLength > maxResponseBytes) {
           throw const InvalidTripDraft();
         }
         final bytes = <int>[];
         await for (final chunk in response) {
-          if (bytes.length + chunk.length > MetaTripPlanner.maxResponseBytes) {
+          if (bytes.length + chunk.length > maxResponseBytes) {
             throw const InvalidTripDraft();
           }
           bytes.addAll(chunk);

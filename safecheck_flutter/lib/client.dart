@@ -40,10 +40,13 @@ const googleWebRedirectUri = String.fromEnvironment(
 );
 
 bool googleSignInReady = false;
+// Development diagnostics contain reasons only, never OAuth credential values.
+String googleSignInDiagnostic = 'Google setup has not started';
 Uri publicWebOrigin = Uri.parse('https://safecheck.serverpod.space');
 
 Future<void> initializeClient() async {
-  client = Client(await serverUrl)
+  final resolvedServerUrl = await serverUrl;
+  client = Client(resolvedServerUrl)
     ..connectivityMonitor = FlutterConnectivityMonitor()
     ..authSessionManager = createSafeCheckSessionManager();
   try {
@@ -53,6 +56,12 @@ Future<void> initializeClient() async {
   }
 
   try {
+    googleSignInDiagnostic = 'Requesting Google configuration';
+    if (kDebugMode) {
+      debugPrint(
+        'Google readiness: API origin ${Uri.parse(resolvedServerUrl).origin}',
+      );
+    }
     final configuration = await client.googleIdp.getConfiguration().timeout(
       const Duration(seconds: 5),
     );
@@ -64,12 +73,35 @@ Future<void> initializeClient() async {
       clientIdOverride: googleWebClientId,
       redirectOverride: googleWebRedirectUri,
     );
+    googleSignInDiagnostic = googleWeb != null
+        ? 'Configuration accepted; initializing Google'
+        : (configuration['googleClientId'] ?? '').isEmpty
+        ? 'Backend Google client is unavailable'
+        : googleWebClientId.isNotEmpty &&
+              googleWebClientId != configuration['googleClientId']
+        ? 'Build client ID differs from backend client ID'
+        : 'Callback or web origin rejected by configuration resolver';
+    if (kDebugMode) {
+      debugPrint('Google readiness: $googleSignInDiagnostic');
+      if (kIsWeb) {
+        debugPrint('Google readiness: browser origin ${Uri.base.origin}');
+      }
+      debugPrint(
+        'Google readiness: metadata received; '
+        'client present=${(configuration['googleClientId'] ?? '').isNotEmpty}; '
+        'client matches=${googleWebClientId.isEmpty || googleWebClientId == configuration['googleClientId']}; '
+        'configuration accepted=${googleWeb != null}',
+      );
+    }
     if (kIsWeb && googleWeb != null) {
       await client.auth.initializeGoogleSignIn(
         clientId: googleWeb.clientId,
         redirectUri: googleWeb.redirect.toString(),
       );
       googleSignInReady = true;
+      googleSignInDiagnostic = 'Google initialization succeeded';
+      if (kDebugMode)
+        debugPrint('Google readiness: web initialization succeeded');
     } else if (googleServerProviderConfigured &&
         !kIsWeb &&
         (configuration['googleClientId'] ?? '').isNotEmpty &&
@@ -81,8 +113,16 @@ Future<void> initializeClient() async {
       );
       googleSignInReady = true;
     }
-  } catch (_) {
+  } catch (error) {
     // Keep email sign-in available if optional Google setup is incomplete.
     googleSignInReady = false;
+    googleSignInDiagnostic = error is TimeoutException
+        ? 'Google configuration request timed out after 5 seconds'
+        : 'Google setup failed (${error.runtimeType})';
+    if (kDebugMode) {
+      debugPrint(
+        'Google readiness: initialization failed (${error.runtimeType})',
+      );
+    }
   }
 }

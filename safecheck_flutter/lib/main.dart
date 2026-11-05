@@ -3,37 +3,12 @@ import 'package:flutter/material.dart';
 import 'client.dart';
 import 'screens/app_shell.dart';
 import 'screens/sign_in_screen.dart';
+import 'theme/safecheck_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeClient();
   runApp(const SafeCheckApp());
-}
-
-/// Builds the SafeCheck theme for the given [brightness].
-ThemeData _buildTheme(Brightness brightness) {
-  final colors = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF00796B),
-    brightness: brightness,
-  );
-  return ThemeData(
-    colorScheme: colors,
-    visualDensity: VisualDensity.standard,
-    inputDecorationTheme: const InputDecorationTheme(
-      border: OutlineInputBorder(),
-    ),
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(64, 52),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      ),
-    ),
-    cardTheme: CardThemeData(
-      elevation: 0,
-      color: colors.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
-  );
 }
 
 class SafeCheckApp extends StatefulWidget {
@@ -44,7 +19,7 @@ class SafeCheckApp extends StatefulWidget {
 }
 
 class _SafeCheckAppState extends State<SafeCheckApp> {
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   void _setThemeMode(ThemeMode mode) {
     setState(() {
@@ -55,10 +30,10 @@ class _SafeCheckAppState extends State<SafeCheckApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SafeCheck',
+      title: 'SafeCheck AI',
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: SafeCheckTheme.build(Brightness.light),
+      darkTheme: SafeCheckTheme.build(Brightness.dark),
       themeMode: _themeMode,
       home: SignInScreen(
         child: AppShell(

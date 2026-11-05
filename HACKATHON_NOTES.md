@@ -20,25 +20,56 @@ New work in this iteration:
 - Regression tests for the review/confirmation boundary, loading failures,
   privacy defaults, draft preservation and narrow-screen accessibility.
 - A Flutter CI job that analyzes the frontend and runs its widget tests.
-- A backend-only Meta AI adapter using a strict draft schema, server time
-  context, bounded requests, safe provider errors and validated draft times.
-  Provider behavior is mocked in tests; app wiring and a live call are pending.
+- A Meta AI trip-planning workflow in Flutter and an authenticated endpoint:
+  describe a trip, clarify missing information, revise, review and confirm.
+  The adapter uses a strict schema, server UTC/SAST context, bounded requests
+  and safe provider errors. Live model interpretation still needs verification.
+- Durable per-owner AI request quotas, including concurrent reservations.
+- A separate confirmation endpoint that preserves the approved exact deadline
+  and rejects stale drafts against the current server clock.
+- AI/privacy information in the app and the draft privacy policy; manual setup
+  remains available when the provider or its configuration is unavailable.
 
-The estimated review time follows the server-adjusted clock, but the existing
-API starts a duration-based countdown at confirmation. The exact deadline is
-the deadline returned by the server. Contacts are re-read by the backend at
-start; review does not lock them against concurrent edits on another device.
+The companion journey form preserves the exact check-in time approved in review,
+displayed in SAST, whether entered manually or interpreted by AI. Legacy clients
+can still use the original duration-based endpoint.
+The server response remains authoritative. Contacts are re-read by the backend
+at start; review does not lock them against concurrent edits on another device.
+
+## Companion expansion on 3 November 2026
+
+- Selected-contact snapshots, exact SAST time selection and configurable grace.
+- Personalized safety plans with honest standard fallback and stored reviewed plans.
+- Owner-authorized extensions, explicit help requests and check-in during grace.
+- Deterministic incident facts and optional Meta organization after dispatch;
+  AI output is limited to fact indexes and allowed action codes.
+- Private 48-hour incident pages; separate opt-in grants accepted contacts
+  resolution permission. Owner resolution and pending-notification cancellation.
+- AI controls remain visible with retry/status feedback after failed availability
+  checks. Configuration detection is not a successful provider request.
+- Additive migration and regenerated protocol/client/test tooling.
+
+The full companion flow is new in this expansion. The earlier scheduler,
+authentication, delivery integration and tracking remain existing infrastructure.
 
 ## Required before a Meta hackathon submission
 
-- Complete and verify the Meta AI planning workflow. **The adapter is not yet
-  connected to the app, and no live Meta request has been verified. The current
-  changes alone do not establish a working Meta feature for the submission.**
-- Have the model ask about ambiguous or missing trip details and produce a
-  validated draft. Keep API credentials on the backend. Reuse the review
-  step and require confirmation before creating a trip or scheduling alerts.
-- Follow `AGENTS.md` for endpoint/model generation and app verification through
-  Serverpod MCP. Do not hand-edit generated clients or server registration.
+Final readiness status and manual gates are maintained in
+[SUBMISSION_READINESS.md](SUBMISSION_READINESS.md). Genuine Muse Spark incident
+inference succeeded in 43.303 seconds on fictional data; interactive safety-plan
+latency remains a limitation. Final local checks passed 164 backend tests
+(one real-send test skipped), 95 Flutter tests and analysis with no issues.
+The hosted signed-out page renders, but new companion build parity and its
+authenticated browser flow remain unverified. Repository visibility is private.
+These findings supersede the earlier pending adapter-access verification below.
+
+- Verify a real Meta request and its interpretation using fictional trip data.
+  **Mocked tests do not establish live Meta access or interpretation quality.**
+  Show a clarification, review and confirmed exact deadline in the live app.
+- Keep API credentials private on the backend. Apply the generated quota
+  migration and verify the deployed build before recording the submission.
+- Generate server/client/test-tool changes with Serverpod; generated files are
+  not hand-edited. This integration was generated with Serverpod CLI 4.0.3.
 - Clearly identify work built during the event, and check the rules governing
   reuse of an existing indie project before presenting the earlier prototype.
 - Make the submission repository public as required by the participant guide,
@@ -55,7 +86,15 @@ confirmed trip with its server deadline. Demonstrate location off by default
 and an explicit sharing choice. Show an actual message status in Alerts after
 a missed check-in, distinguishing a simulation from a provider submission.
 For the AI portion, demonstrate a real Meta request, a clarification and a
-user-reviewed draft once that integration is implemented.
+user-reviewed draft. Present simulated messages with their actual status.
+
+The organizer's 28 October reply confirms pivots are allowed without updating
+the application or notifying anyone. It does not resolve reuse rules for an
+existing indie prototype. The participant guide explicitly describes reuse for
+startups; confirm the indie case before presenting earlier work. Use the
+Build for Your World theme and the Indie track if applying as a solo builder.
+Submit one public repository, accessible live product and new three-minute demo
+by 4 November 2026 at 21:00 ET (5 November at 04:00 SAST).
 
 Ask three to five people to try setup and contact review. Record completion
 time, errors and confusing steps, then report actual observations. Previous
@@ -72,12 +111,14 @@ flutter test test/trip_review_test.dart
 flutter test
 ```
 
-Verified on 2 November 2026 with Flutter 3.44.4 / Dart 3.12.2: Flutter static
-analysis passed, changed Dart files passed formatting checks, all 14 focused
-review tests passed, and the full Flutter suite passed all 73 tests. The
-existing backend analysis, formatting and test workflows also passed on the
-initial PR revision; check the latest PR checks after further changes.
+Verification on 2 November 2026 uses Flutter 3.44.4 / Dart 3.12.2. The first
+integration revision passed all four CI workflows, including all 113 backend
+tests against embedded PostgreSQL. The Flutter suite covers AI/manual review,
+generated-client wiring, lost-start-reply reconciliation and narrow screens with
+enlarged text. A release web build also succeeded. See the integration pull
+request for results at its latest revision.
 
-Use the existing Serverpod MCP workflow for interactive app verification.
-Unit/widget tests do not establish production SMS delivery or background
-tracking behavior.
+Current local findings are recorded in
+[the 4 November verification notes](safecheck_server/VERIFICATION_NOV4.md).
+Unit/widget tests do not establish live model quality, production SMS
+delivery or background tracking behavior.

@@ -1,0 +1,14 @@
+### Server-only counters. Trip text and model responses are never stored here.
+class: PlanningQuota
+table: planning_quota
+serverOnly: true
+fields:
+  ownerId: String
+  windowStartedAt: DateTime
+  windowCount: int
+  dayStartedAt: DateTime
+  dayCount: int
+indexes:
+  planning_quota_owner_idx:
+    fields: ownerId
+    unique: true

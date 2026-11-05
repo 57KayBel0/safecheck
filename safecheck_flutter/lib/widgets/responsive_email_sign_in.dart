@@ -99,7 +99,14 @@ class _ResponsiveEmailSignInWidgetState
       children: [
         Text(
           login ? texts.title : texts.signUpTitle,
-          style: Theme.of(context).textTheme.headlineMedium,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          login
+              ? 'Welcome back. Pick up where you left off.'
+              : 'Start with your email. Your journey stays in your control.',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 24),
         EmailTextField(controller: _controller),
@@ -141,7 +148,7 @@ class _ResponsiveEmailSignInWidgetState
         Wrap(
           alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
+          spacing: 4,
           children: [
             Text(
               login ? texts.dontHaveAnAccount : texts.alreadyHaveAnAccount,

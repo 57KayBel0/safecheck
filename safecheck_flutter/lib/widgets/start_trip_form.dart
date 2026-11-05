@@ -17,12 +17,14 @@ class StartTripForm extends StatefulWidget {
     required this.serverNow,
     required this.onOpenContacts,
     required this.onStart,
+    this.onBusyChanged,
   });
 
   final List<TrustedContact> contacts;
   final Future<List<TrustedContact>> Function() loadContacts;
   final DateTime Function() serverNow;
   final VoidCallback onOpenContacts;
+  final ValueChanged<bool>? onBusyChanged;
   final Future<void> Function(
     TripType,
     String,
@@ -70,12 +72,15 @@ class _StartTripFormState extends State<StartTripForm> {
 
   int? get _minutes => _presetMinutes ?? int.tryParse(_customMinutes.text);
 
+  void _setPhase(_StartTripPhase phase) {
+    setState(() => _phase = phase);
+    widget.onBusyChanged?.call(phase != _StartTripPhase.idle);
+  }
+
   Future<void> _submit() async {
     if (_busy || !_formKey.currentState!.validate()) return;
-    setState(() {
-      _phase = _StartTripPhase.loadingContacts;
-      _error = null;
-    });
+    _setPhase(_StartTripPhase.loadingContacts);
+    setState(() => _error = null);
     final type = _type;
     final description = _description.text.trim();
     final minutes = _minutes!;
@@ -94,7 +99,7 @@ class _StartTripFormState extends State<StartTripForm> {
         return;
       }
       final deadline = widget.serverNow().add(Duration(minutes: minutes));
-      setState(() => _phase = _StartTripPhase.reviewing);
+      _setPhase(_StartTripPhase.reviewing);
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => TripReviewDialog(
@@ -108,13 +113,13 @@ class _StartTripFormState extends State<StartTripForm> {
         ),
       );
       if (!mounted || confirmed != true) return;
-      setState(() => _phase = _StartTripPhase.starting);
+      _setPhase(_StartTripPhase.starting);
       await widget.onStart(type, description, minutes, reminderMode, sharing);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = friendlyError(e));
     } finally {
-      if (mounted) setState(() => _phase = _StartTripPhase.idle);
+      if (mounted) _setPhase(_StartTripPhase.idle);
     }
   }
 
@@ -250,6 +255,7 @@ class _StartTripFormState extends State<StartTripForm> {
           ],
           const SizedBox(height: 20),
           DropdownButtonFormField<LocationSharing>(
+            isExpanded: true,
             initialValue: _sharing,
             decoration: const InputDecoration(labelText: 'Location sharing'),
             items: const [

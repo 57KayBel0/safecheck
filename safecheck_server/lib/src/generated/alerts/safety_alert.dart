@@ -12,6 +12,9 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:safecheck_server/src/generated/protocol.dart' as _iwfhb10e;
 import 'package:serverpod/serverpod.dart' as _is;
+import '../companion/alert_reason.dart' as _ijoowf6j;
+import '../companion/brief_status.dart' as _i531ttm8;
+import '../companion/incident_brief.dart' as _i2a7cxt8;
 import '../trips/contact_snapshot.dart' as _i0udr1y1;
 import '../trips/trip_type.dart' as _ix6rm8oc;
 
@@ -30,7 +33,16 @@ abstract class SafetyAlert
     required this.deadline,
     required this.createdAt,
     required this.contacts,
-  });
+    _ijoowf6j.AlertReason? reason,
+    this.brief,
+    _i531ttm8.BriefStatus? briefStatus,
+    this.briefAttemptedAt,
+    this.resolvedAt,
+    this.resolvedBy,
+    this.resolutionActor,
+    this.resolutionNote,
+  }) : reason = reason ?? _ijoowf6j.AlertReason.missedCheckIn,
+       briefStatus = briefStatus ?? _i531ttm8.BriefStatus.fallback;
 
   factory SafetyAlert({
     int? id,
@@ -43,6 +55,14 @@ abstract class SafetyAlert
     required DateTime deadline,
     required DateTime createdAt,
     required List<_i0udr1y1.ContactSnapshot> contacts,
+    _ijoowf6j.AlertReason? reason,
+    _i2a7cxt8.IncidentBrief? brief,
+    _i531ttm8.BriefStatus? briefStatus,
+    DateTime? briefAttemptedAt,
+    DateTime? resolvedAt,
+    String? resolvedBy,
+    String? resolutionActor,
+    String? resolutionNote,
   }) = _SafetyAlertImpl;
 
   factory SafetyAlert.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -66,6 +86,32 @@ abstract class SafetyAlert
           .deserialize<List<_i0udr1y1.ContactSnapshot>>(
             jsonSerialization['contacts'],
           ),
+      reason: jsonSerialization['reason'] == null
+          ? null
+          : _ijoowf6j.AlertReason.fromJson(
+              (jsonSerialization['reason'] as String),
+            ),
+      brief: jsonSerialization['brief'] == null
+          ? null
+          : _iwfhb10e.Protocol().deserialize<_i2a7cxt8.IncidentBrief>(
+              jsonSerialization['brief'],
+            ),
+      briefStatus: jsonSerialization['briefStatus'] == null
+          ? null
+          : _i531ttm8.BriefStatus.fromJson(
+              (jsonSerialization['briefStatus'] as String),
+            ),
+      briefAttemptedAt: jsonSerialization['briefAttemptedAt'] == null
+          ? null
+          : _is.DateTimeJsonExtension.fromJson(
+              jsonSerialization['briefAttemptedAt'],
+            ),
+      resolvedAt: jsonSerialization['resolvedAt'] == null
+          ? null
+          : _is.DateTimeJsonExtension.fromJson(jsonSerialization['resolvedAt']),
+      resolvedBy: jsonSerialization['resolvedBy'] as String?,
+      resolutionActor: jsonSerialization['resolutionActor'] as String?,
+      resolutionNote: jsonSerialization['resolutionNote'] as String?,
     );
   }
 
@@ -96,6 +142,22 @@ abstract class SafetyAlert
   /// Contacts the alert is addressed to, copied from the trip.
   List<_i0udr1y1.ContactSnapshot> contacts;
 
+  _ijoowf6j.AlertReason reason;
+
+  _i2a7cxt8.IncidentBrief? brief;
+
+  _i531ttm8.BriefStatus briefStatus;
+
+  DateTime? briefAttemptedAt;
+
+  DateTime? resolvedAt;
+
+  String? resolvedBy;
+
+  String? resolutionActor;
+
+  String? resolutionNote;
+
   @override
   _is.Table<int?> get table => t;
 
@@ -113,6 +175,14 @@ abstract class SafetyAlert
     DateTime? deadline,
     DateTime? createdAt,
     List<_i0udr1y1.ContactSnapshot>? contacts,
+    _ijoowf6j.AlertReason? reason,
+    _i2a7cxt8.IncidentBrief? brief,
+    _i531ttm8.BriefStatus? briefStatus,
+    DateTime? briefAttemptedAt,
+    DateTime? resolvedAt,
+    String? resolvedBy,
+    String? resolutionActor,
+    String? resolutionNote,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -128,6 +198,15 @@ abstract class SafetyAlert
       'deadline': deadline.toJson(),
       'createdAt': createdAt.toJson(),
       'contacts': contacts.toJson(valueToJson: (v) => v.toJson()),
+      'reason': reason.toJson(),
+      if (brief != null) 'brief': brief?.toJson(),
+      'briefStatus': briefStatus.toJson(),
+      if (briefAttemptedAt != null)
+        'briefAttemptedAt': briefAttemptedAt?.toJson(),
+      if (resolvedAt != null) 'resolvedAt': resolvedAt?.toJson(),
+      if (resolvedBy != null) 'resolvedBy': resolvedBy,
+      if (resolutionActor != null) 'resolutionActor': resolutionActor,
+      if (resolutionNote != null) 'resolutionNote': resolutionNote,
     };
   }
 
@@ -145,6 +224,14 @@ abstract class SafetyAlert
       'deadline': deadline.toJson(),
       'createdAt': createdAt.toJson(),
       'contacts': contacts.toJson(valueToJson: (v) => v.toJsonForProtocol()),
+      'reason': reason.toJson(),
+      if (brief != null) 'brief': brief?.toJsonForProtocol(),
+      'briefStatus': briefStatus.toJson(),
+      if (briefAttemptedAt != null)
+        'briefAttemptedAt': briefAttemptedAt?.toJson(),
+      if (resolvedAt != null) 'resolvedAt': resolvedAt?.toJson(),
+      if (resolutionActor != null) 'resolutionActor': resolutionActor,
+      if (resolutionNote != null) 'resolutionNote': resolutionNote,
     };
   }
 
@@ -190,6 +277,14 @@ class _SafetyAlertImpl extends SafetyAlert {
     required DateTime deadline,
     required DateTime createdAt,
     required List<_i0udr1y1.ContactSnapshot> contacts,
+    _ijoowf6j.AlertReason? reason,
+    _i2a7cxt8.IncidentBrief? brief,
+    _i531ttm8.BriefStatus? briefStatus,
+    DateTime? briefAttemptedAt,
+    DateTime? resolvedAt,
+    String? resolvedBy,
+    String? resolutionActor,
+    String? resolutionNote,
   }) : super._(
          id: id,
          ownerId: ownerId,
@@ -201,6 +296,14 @@ class _SafetyAlertImpl extends SafetyAlert {
          deadline: deadline,
          createdAt: createdAt,
          contacts: contacts,
+         reason: reason,
+         brief: brief,
+         briefStatus: briefStatus,
+         briefAttemptedAt: briefAttemptedAt,
+         resolvedAt: resolvedAt,
+         resolvedBy: resolvedBy,
+         resolutionActor: resolutionActor,
+         resolutionNote: resolutionNote,
        );
 
   /// Returns a shallow copy of this [SafetyAlert]
@@ -218,6 +321,14 @@ class _SafetyAlertImpl extends SafetyAlert {
     DateTime? deadline,
     DateTime? createdAt,
     List<_i0udr1y1.ContactSnapshot>? contacts,
+    _ijoowf6j.AlertReason? reason,
+    Object? brief = _Undefined,
+    _i531ttm8.BriefStatus? briefStatus,
+    Object? briefAttemptedAt = _Undefined,
+    Object? resolvedAt = _Undefined,
+    Object? resolvedBy = _Undefined,
+    Object? resolutionActor = _Undefined,
+    Object? resolutionNote = _Undefined,
   }) {
     return SafetyAlert(
       id: id is int? ? id : this.id,
@@ -230,6 +341,20 @@ class _SafetyAlertImpl extends SafetyAlert {
       deadline: deadline ?? this.deadline,
       createdAt: createdAt ?? this.createdAt,
       contacts: contacts ?? this.contacts.map((e0) => e0.copyWith()).toList(),
+      reason: reason ?? this.reason,
+      brief: brief is _i2a7cxt8.IncidentBrief? ? brief : this.brief?.copyWith(),
+      briefStatus: briefStatus ?? this.briefStatus,
+      briefAttemptedAt: briefAttemptedAt is DateTime?
+          ? briefAttemptedAt
+          : this.briefAttemptedAt,
+      resolvedAt: resolvedAt is DateTime? ? resolvedAt : this.resolvedAt,
+      resolvedBy: resolvedBy is String? ? resolvedBy : this.resolvedBy,
+      resolutionActor: resolutionActor is String?
+          ? resolutionActor
+          : this.resolutionActor,
+      resolutionNote: resolutionNote is String?
+          ? resolutionNote
+          : this.resolutionNote,
     );
   }
 }
@@ -292,6 +417,56 @@ class SafetyAlertUpdateTable extends _is.UpdateTable<SafetyAlertTable> {
     table.contacts,
     value,
   );
+
+  _is.ColumnValue<_ijoowf6j.AlertReason, _ijoowf6j.AlertReason> reason(
+    _ijoowf6j.AlertReason value,
+  ) => _is.ColumnValue(
+    table.reason,
+    value,
+  );
+
+  _is.ColumnValue<_i2a7cxt8.IncidentBrief, _i2a7cxt8.IncidentBrief> brief(
+    _i2a7cxt8.IncidentBrief? value,
+  ) => _is.ColumnValue(
+    table.brief,
+    value,
+  );
+
+  _is.ColumnValue<_i531ttm8.BriefStatus, _i531ttm8.BriefStatus> briefStatus(
+    _i531ttm8.BriefStatus value,
+  ) => _is.ColumnValue(
+    table.briefStatus,
+    value,
+  );
+
+  _is.ColumnValue<DateTime, DateTime> briefAttemptedAt(DateTime? value) =>
+      _is.ColumnValue(
+        table.briefAttemptedAt,
+        value,
+      );
+
+  _is.ColumnValue<DateTime, DateTime> resolvedAt(DateTime? value) =>
+      _is.ColumnValue(
+        table.resolvedAt,
+        value,
+      );
+
+  _is.ColumnValue<String, String> resolvedBy(String? value) => _is.ColumnValue(
+    table.resolvedBy,
+    value,
+  );
+
+  _is.ColumnValue<String, String> resolutionActor(String? value) =>
+      _is.ColumnValue(
+        table.resolutionActor,
+        value,
+      );
+
+  _is.ColumnValue<String, String> resolutionNote(String? value) =>
+      _is.ColumnValue(
+        table.resolutionNote,
+        value,
+      );
 }
 
 class SafetyAlertTable extends _is.Table<int?> {
@@ -334,6 +509,42 @@ class SafetyAlertTable extends _is.Table<int?> {
       'contacts',
       this,
     );
+    reason = _is.ColumnEnum(
+      'reason',
+      this,
+      _is.EnumSerialization.byName,
+      hasDefault: true,
+    );
+    brief = _is.ColumnSerializable<_i2a7cxt8.IncidentBrief>(
+      'brief',
+      this,
+    );
+    briefStatus = _is.ColumnEnum(
+      'briefStatus',
+      this,
+      _is.EnumSerialization.byName,
+      hasDefault: true,
+    );
+    briefAttemptedAt = _is.ColumnDateTime(
+      'briefAttemptedAt',
+      this,
+    );
+    resolvedAt = _is.ColumnDateTime(
+      'resolvedAt',
+      this,
+    );
+    resolvedBy = _is.ColumnString(
+      'resolvedBy',
+      this,
+    );
+    resolutionActor = _is.ColumnString(
+      'resolutionActor',
+      this,
+    );
+    resolutionNote = _is.ColumnString(
+      'resolutionNote',
+      this,
+    );
   }
 
   late final SafetyAlertUpdateTable updateTable;
@@ -358,6 +569,22 @@ class SafetyAlertTable extends _is.Table<int?> {
   /// Contacts the alert is addressed to, copied from the trip.
   late final _is.ColumnSerializable<List<_i0udr1y1.ContactSnapshot>> contacts;
 
+  late final _is.ColumnEnum<_ijoowf6j.AlertReason> reason;
+
+  late final _is.ColumnSerializable<_i2a7cxt8.IncidentBrief> brief;
+
+  late final _is.ColumnEnum<_i531ttm8.BriefStatus> briefStatus;
+
+  late final _is.ColumnDateTime briefAttemptedAt;
+
+  late final _is.ColumnDateTime resolvedAt;
+
+  late final _is.ColumnString resolvedBy;
+
+  late final _is.ColumnString resolutionActor;
+
+  late final _is.ColumnString resolutionNote;
+
   @override
   List<_is.Column> get columns => [
     id,
@@ -370,6 +597,14 @@ class SafetyAlertTable extends _is.Table<int?> {
     deadline,
     createdAt,
     contacts,
+    reason,
+    brief,
+    briefStatus,
+    briefAttemptedAt,
+    resolvedAt,
+    resolvedBy,
+    resolutionActor,
+    resolutionNote,
   ];
 }
 

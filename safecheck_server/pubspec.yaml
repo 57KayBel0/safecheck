@@ -9,6 +9,7 @@ environment:
 resolution: workspace
 
 dependencies:
+  crypto: ^3.0.7
   serverpod: 4.0.3
   serverpod_auth_idp_server: 4.0.3
   serverpod_cloud_storage: 4.0.3
@@ -55,6 +56,6 @@ serverpod:
       target: lib/driver.dart
       web-port: 55267
       dart-define:
-        GOOGLE_CLIENT_ID: 941528893459-biafi7aa10bbh07r8fl59gbvvffecac0.apps.googleusercontent.com
+        GOOGLE_CLIENT_ID: 946786816608-bb8rj8jei0vs1oq3njfr8ciiois1c7jk.apps.googleusercontent.com
         GOOGLE_IDP_CONFIGURED: "true"
         GOOGLE_WEB_REDIRECT_URI: http://localhost:55267/auth.html

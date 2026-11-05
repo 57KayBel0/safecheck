@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:safecheck_client/safecheck_client.dart';
 
 import '../app_events.dart';
@@ -8,6 +10,8 @@ import '../util/format.dart';
 import '../widgets/copy_tracking_link_button.dart';
 import '../widgets/demo_notice.dart';
 import '../widgets/state_views.dart';
+import '../widgets/incident_brief_card.dart';
+import '../widgets/safety_design.dart';
 
 /// Alerts raised for missed check-ins and their message statuses.
 class AlertsScreen extends StatefulWidget {
@@ -22,6 +26,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
   Map<int, List<AlertMessage>> _messagesByAlert = {};
   Object? _error;
   bool _loading = true;
+  Timer? _briefPoll;
+  final _resolving = <int>{};
 
   @override
   void initState() {
@@ -32,6 +38,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   void dispose() {
+    _briefPoll?.cancel();
     dataRevision.removeListener(_reloadSilently);
     super.dispose();
   }
@@ -62,12 +69,74 @@ class _AlertsScreenState extends State<AlertsScreen> {
         _loading = false;
         _error = null;
       });
+      if (_alerts!.any(
+        (a) =>
+            a.resolvedAt == null &&
+            (a.briefStatus == BriefStatus.pending ||
+                a.briefStatus == BriefStatus.processing),
+      )) {
+        _briefPoll ??= Timer.periodic(
+          const Duration(seconds: 4),
+          (_) => _load(silent: true),
+        );
+      } else {
+        _briefPoll?.cancel();
+        _briefPoll = null;
+      }
     } catch (e) {
       if (!mounted || (silent && _alerts != null)) return;
       setState(() {
         _error = e;
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _resolve(SafetyAlert alert) async {
+    final note = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Resolve this incident?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Confirm the situation first. This stops pending messages; already submitted messages cannot be recalled.',
+            ),
+            TextField(
+              controller: note,
+              maxLength: 200,
+              decoration: const InputDecoration(
+                labelText: 'Outcome note (optional)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm resolution'),
+          ),
+        ],
+      ),
+    );
+    final value = note.text;
+    note.dispose();
+    if (confirmed != true || !mounted) return;
+    setState(() => _resolving.add(alert.id!));
+    try {
+      await client.alert.resolveIncident(alert.id!, value);
+      notifyDataChanged();
+      await _load(silent: true);
+    } catch (e) {
+      if (mounted) showSnack(context, friendlyError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _resolving.remove(alert.id!));
     }
   }
 
@@ -83,27 +152,64 @@ class _AlertsScreenState extends State<AlertsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const MessageStatusBanner(),
-          const SizedBox(height: 16),
-          if (alerts.isEmpty)
-            const SizedBox(
-              height: 360,
-              child: EmptyView(
-                icon: Icons.notifications_none,
-                title: 'No alerts',
-                message:
-                    'If you miss a check-in deadline, the alert and the '
-                    'messages that would be sent appear here.',
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 920),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SafetySectionHeading(
+                    eyebrow: 'CLARITY WHEN IT MATTERS',
+                    title: 'Incident center',
+                    subtitle:
+                        'Recorded facts, message statuses and the next steps you control. A missed check-in is not proof of danger.',
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      SafetyTag(
+                        label:
+                            '${alerts.where((a) => a.resolvedAt == null).length} open',
+                        icon: Icons.info_outline,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      SafetyTag(
+                        label:
+                            '${alerts.where((a) => a.resolvedAt != null).length} resolved',
+                        icon: Icons.task_alt_rounded,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const MessageStatusBanner(),
+                  const SizedBox(height: 16),
+                  if (alerts.isEmpty)
+                    const SizedBox(
+                      height: 360,
+                      child: EmptyView(
+                        icon: Icons.notifications_none,
+                        title: 'No alerts',
+                        message:
+                            'If you miss a check-in deadline, the alert and the '
+                            'messages that would be sent appear here.',
+                      ),
+                    )
+                  else
+                    for (final alert in alerts) ...[
+                      _AlertCard(
+                        alert: alert,
+                        messages: _messagesByAlert[alert.id] ?? const [],
+                        onResolve: () => _resolve(alert),
+                        resolving: _resolving.contains(alert.id),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                ],
               ),
-            )
-          else
-            for (final alert in alerts) ...[
-              _AlertCard(
-                alert: alert,
-                messages: _messagesByAlert[alert.id] ?? const [],
-              ),
-              const SizedBox(height: 12),
-            ],
+            ),
+          ),
         ],
       ),
     );
@@ -111,28 +217,62 @@ class _AlertsScreenState extends State<AlertsScreen> {
 }
 
 class _AlertCard extends StatelessWidget {
-  const _AlertCard({required this.alert, required this.messages});
+  const _AlertCard({
+    required this.alert,
+    required this.messages,
+    required this.onResolve,
+    required this.resolving,
+  });
 
   final SafetyAlert alert;
   final List<AlertMessage> messages;
+  final VoidCallback onResolve;
+  final bool resolving;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(
+          color: (alert.resolvedAt == null ? colors.error : colors.primary)
+              .withValues(alpha: 0.3),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: colors.error),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color:
+                        (alert.resolvedAt == null
+                                ? colors.errorContainer
+                                : colors.primaryContainer)
+                            .withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    alert.resolvedAt == null
+                        ? Icons.notification_important_outlined
+                        : Icons.task_alt_rounded,
+                    color: alert.resolvedAt == null
+                        ? colors.error
+                        : colors.primary,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Missed check-in',
+                    alert.reason == AlertReason.helpRequested
+                        ? 'Traveller requested help'
+                        : 'Missed check-in',
                     style: text.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -150,6 +290,11 @@ class _AlertCard extends StatelessWidget {
               'Deadline ${formatDateTime(context, alert.deadline)}\n'
               'Alert created ${formatDateTime(context, alert.createdAt)}',
               style: text.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+            ),
+            IncidentBriefCard(
+              alert: alert,
+              onResolve: onResolve,
+              resolving: resolving,
             ),
             const Divider(height: 24),
             Text(
@@ -210,6 +355,25 @@ class _MessageTile extends StatelessWidget {
             const SizedBox(height: 8),
             Text(message.body, style: text.bodyMedium),
             CopyTrackingLinkButton(messageBody: message.body),
+            if (RegExp(
+              r'https?://[^\s]+/incident/[A-Za-z0-9_-]+',
+            ).hasMatch(message.body))
+              TextButton.icon(
+                onPressed: () async {
+                  final url = RegExp(
+                    r'https?://[^\s]+/incident/[A-Za-z0-9_-]+',
+                  ).firstMatch(message.body)!.group(0)!;
+                  await Clipboard.setData(ClipboardData(text: url));
+                  if (context.mounted) {
+                    showSnack(
+                      context,
+                      'Private incident link copied. Share only with the intended contact.',
+                    );
+                  }
+                },
+                icon: const Icon(Icons.copy),
+                label: const Text('Copy private incident link'),
+              ),
           ],
         ),
       ),
